@@ -1,0 +1,45 @@
+import assert from 'node:assert/strict';
+import { PrismaClient } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
+const db=new PrismaClient();const fixtureName='BrowserRoute-'+randomUUID();
+const pages=await(await fetch('http://127.0.0.1:9223/json')).json();
+const ws=new WebSocket(pages[0].webSocketDebuggerUrl);await new Promise(r=>ws.addEventListener('open',r,{once:true}));let id=0;const pending=new Map();
+ws.addEventListener('message',e=>{const m=JSON.parse(e.data);if(m.id){pending.get(m.id)?.(m);pending.delete(m.id)}});
+const send=(method,params={})=>new Promise((resolve,reject)=>{const key=++id;const timeout=setTimeout(()=>{pending.delete(key);reject(new Error('Browser command timed out: '+method))},15000);pending.set(key,m=>{clearTimeout(timeout);resolve(m)});ws.send(JSON.stringify({id:key,method,params}))});
+const evaluate=async expression=>{const r=await send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.result?.exceptionDetails)throw new Error(JSON.stringify(r.result.exceptionDetails));return r.result.result.value};
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+try{
+await send('Page.enable');await send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,screenWidth:1440,screenHeight:1000,deviceScaleFactor:1,mobile:false});await send('Emulation.setVisibleSize',{width:1440,height:1000});
+await send('Page.navigate',{url:'http://127.0.0.1:3000/login'});await wait(1200);
+assert.equal(await evaluate(`fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'admin@leadmap.com',password:'LeadMap@123'})}).then(r=>r.status)`),200);
+await send('Page.navigate',{url:'http://127.0.0.1:3000/leads'});await wait(2500);
+assert((await evaluate(`document.querySelectorAll('tbody tr').length`))>1);
+await evaluate(`(()=>{const rows=document.querySelectorAll('tbody tr');rows[0].dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,button:0,buttons:1}));rows[1].dispatchEvent(new PointerEvent('pointerover',{bubbles:true,buttons:1}));window.dispatchEvent(new PointerEvent('pointerup',{bubbles:true}));})()`);await wait(200);
+assert.equal(await evaluate(`document.querySelectorAll('tbody tr[aria-selected="true"]').length`),2);
+assert(await evaluate(`document.body.innerText.includes('Ground team member') && document.body.innerText.includes('Contact / phone')`));
+console.log('PASS browser table drag selection and column-filter controls');
+await send('Page.navigate',{url:'http://127.0.0.1:3000/map'});await wait(2200);
+const map=await evaluate(`(()=>{const e=document.querySelector('.leaflet-container');const r=e.getBoundingClientRect();return {width:r.width,height:r.height,pins:document.querySelectorAll('.custom-lead-pin').length,visible:[...document.querySelectorAll('.custom-lead-pin')].filter(e=>{const b=e.getBoundingClientRect();return b.right>r.left&&b.left<r.right&&b.bottom>r.top&&b.top<r.bottom}).length}})()`);
+assert(map.width>0&&map.height>0&&map.pins>0&&map.visible>0,JSON.stringify(map));console.log('PASS browser map dimensions and visible lead markers',map);
+const repEmail=await evaluate(`fetch('/api/users?role=ground_rep').then(r=>r.json()).then(d=>d.users[0].email)`);
+assert.equal(await evaluate(`fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:${JSON.stringify(repEmail)},password:'LeadMap@123'})}).then(r=>r.status)`),200);
+await send('Page.navigate',{url:'http://127.0.0.1:3000/rep-portal'});await wait(1800);
+await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Build My Route')).click()`);await wait(200);
+const count=await evaluate(`document.querySelectorAll('[role="checkbox"]').length`);assert(count>0);
+await evaluate(`document.querySelector('[role="checkbox"]').dispatchEvent(new KeyboardEvent('keydown',{key:' ',bubbles:true}))`);await wait(200);
+assert.equal(await evaluate(`document.querySelectorAll('[role="checkbox"][aria-checked="true"]').length`),1);
+console.log('PASS rep route tab and keyboard-accessible lead selection');
+const rep=await db.user.findUnique({where:{email:repEmail}});
+await db.lead.create({data:{company_name:fixtureName,assigned_ground_rep_id:rep.id}});
+await send('Page.reload');await wait(1800);
+await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Build My Route')).click()`);await wait(200);
+await evaluate(`[...document.querySelectorAll('[role="checkbox"]')].find(e=>e.textContent.includes(${JSON.stringify(fixtureName)})).dispatchEvent(new KeyboardEvent('keydown',{key:' ',bubbles:true}))`);await wait(200);
+await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Preview Route Map')).click()`);await wait(200);
+assert(await evaluate(`document.body.innerText.includes('Add Location for Lead')`));
+await evaluate(`(()=>{const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;for(const [label,value] of [['Latitude','12.972'],['Longitude','77.595']]){const input=document.querySelector('input[aria-label="'+label+'"]');set.call(input,value);input.dispatchEvent(new Event('input',{bubbles:true}));}})()`);await wait(200);
+await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Save Location & Add to Route')).click()`);await wait(1500);
+assert(await evaluate(`document.body.innerText.includes('All locations saved')`));
+assert((await evaluate(`[...document.querySelectorAll('a')].some(a=>a.href.includes('maps/dir')&&a.href.includes('12.972'))`)));
+console.log('PASS browser missing-location prompt, coordinate save, and complete route link');
+
+}finally{ws.close();await db.lead.deleteMany({where:{company_name:fixtureName}});await db.$disconnect()}

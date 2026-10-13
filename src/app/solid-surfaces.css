@@ -1,0 +1,62 @@
+/* Solid replacement for legacy translucent surface utilities. */
+body.florzy-app *, body.florzy-app *::before, body.florzy-app *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+body.florzy-app button, body.florzy-app a[role="button"], body.florzy-app .page-actions a {
+  background: #fff7ed;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+body.florzy-app button:is([class*="bg-blue-7"], [class*="bg-indigo-"], [class*="bg-[#ff4500]"], [class*="bg-orange-6"]) {
+  background: #ff4500; color: #fff;
+}
+body.florzy-app button:is([class*="bg-green-7"], [class*="bg-emerald-6"]) { background: #dcfce7; }
+body.florzy-app button:is([class*="bg-red-"], [class*="text-red-"], [class*="bg-rose-"]) { background: #fee2e2; }
+body.florzy-app header, body.florzy-app .workspace-card { background: #fff; }
+body.florzy-app .page-icon { background: #fff7ed; box-shadow: none; }
+
+/* Clear hierarchy, stronger contrast and restrained orange accents. */
+body.florzy-app { background: #eef2f6; color: #172033; }
+body.florzy-app .page-heading {
+  background: #172033;
+  border: 1px solid #26344c;
+  border-left: 5px solid #ff4500;
+  border-radius: 18px;
+  padding: 24px;
+  margin-bottom: 24px;
+  color: #fff;
+}
+body.florzy-app .page-heading h1 { color: #fff; letter-spacing: -0.025em; }
+body.florzy-app .page-heading .page-description { color: #d5deeb; line-height: 1.6; }
+body.florzy-app .page-heading .page-eyebrow { color: #ffb394; letter-spacing: .14em; }
+body.florzy-app .page-icon { background: #ff4500; color: #fff; border-color: #ff4500; }
+body.florzy-app .workspace-card { border: 1px solid #d4dce7; border-radius: 16px; box-shadow: 0 3px 10px #17203308; }
+body.florzy-app button, body.florzy-app a[role="button"] { background-color: #fff; border-color: #c5cfdd; color: #25334a; font-weight: 600; }
+body.florzy-app button:hover:not(:disabled) { background-color: #fff1e9; border-color: #ff4500; color: #a92c00; }
+body.florzy-app button:is([class*="bg-blue-7"], [class*="bg-indigo-"], [class*="bg-[#ff4500]"], [class*="bg-orange-6"]) { background-color: #ff4500; color: #fff; border-color: #db3b00; }
+body.florzy-app :is(button, a, input, select, textarea):focus-visible { outline: 3px solid #ff8a60; outline-offset: 3px; }
+body.florzy-app thead { background: #e8edf4; color: #24324a; }
+body.florzy-app th { font-weight: 700; }
+body.florzy-app tbody tr:hover { background-color: #fff6ef; }
+body.florzy-app :is(input,select,textarea) { border-color: #bdc9d9; }
+@media(max-width:640px) { body.florzy-app .page-heading { padding: 18px; border-radius: 12px; } }
+
+/* Compact shared workspace cards and a consistent brand hierarchy. */
+body.florzy-app { background: #f5f6f8; }
+body.florzy-app .page-heading { padding: 18px 20px; margin-bottom: 18px; border-radius: 12px; background: #fff; color: #172033; border: 1px solid #e1e5eb; border-left: 4px solid #ff4500; }
+body.florzy-app .page-heading h1 { color: #172033; font-size: clamp(1.25rem, 2vw, 1.65rem); }
+body.florzy-app .page-heading .page-description { color: #526176; font-size: .875rem; }
+body.florzy-app .page-heading .page-eyebrow { color: #b83404; }
+body.florzy-app .workspace-card, body.florzy-app .partner-form-section { padding: 16px; border-radius: 12px; border: 1px solid #e1e5eb; box-shadow: 0 2px 6px #17203305; }
+body.florzy-app .workspace-card h2, body.florzy-app .partner-form-section h3 { letter-spacing: -.015em; }
+body.florzy-app .page-icon { width: 34px; height: 34px; border-radius: 9px; background: #fff0e9; color: #d83a00; border: 1px solid #ffd6c7; }
+body.florzy-app :is(input,select,textarea) { accent-color: #ff4500; }
+body.florzy-app .original-lead { border-left: 3px solid #ff4500; background: #fffaf7; }
+body.florzy-app .intake-team { display: inline-flex; padding: 5px 9px; border-radius: 6px; background: #fff0e9; color: #a92c00; font-size: .75rem; font-weight: 600; }
+body.florzy-app .store-visit-board { margin: 16px 24px 0; padding: 12px 16px; border: 1px solid #ffd2c0; border-left: 4px solid #ff4500; border-radius: 12px; background: white; }
+body.florzy-app .appointment-count { background: #fff0e9; color: #a92c00; padding: 2px 7px; border-radius: 5px; font-size: 11px; }
+body.florzy-app .appointment-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,240px),1fr)); gap: 10px; max-height: 320px; overflow: auto; }
+body.florzy-app .appointment-card { border: 1px solid #f3dfd5; border-radius: 9px; padding: 12px; margin-top: 12px; background: #fffbf8; }
+body.florzy-app .store-visit-fields { border-color: #ffd2c0; }
+@media(max-width:640px) { body.florzy-app .store-visit-board { margin: 12px 12px 0; } body.florzy-app .workspace-card { padding: 12px; } }

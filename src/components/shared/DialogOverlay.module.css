@@ -1,0 +1,23 @@
+/* All dialogs fit the visible viewport, including short/mobile screens. */
+.overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 4000 !important;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)) !important;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  color: #0f172a;
+}
+.overlay > :is(div, section, form) {
+  max-height: calc(100dvh - 32px) !important;
+  max-width: calc(100vw - 24px);
+  min-height: 0;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+}
+.overlay form {
+  min-height: 0;
+}
+.overlay header {
+  flex-shrink: 0;
+}

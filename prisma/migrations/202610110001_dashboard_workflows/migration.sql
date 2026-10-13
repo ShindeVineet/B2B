@@ -1,0 +1,10 @@
+BEGIN;
+ALTER TABLE partners ADD COLUMN company_legal_name TEXT, ADD COLUMN partner_type TEXT NOT NULL DEFAULT 'Individual';
+UPDATE partners SET partner_type = CASE WHEN NULLIF(trim(gst_no),'') IS NOT NULL THEN 'Company' ELSE 'Individual' END;
+ALTER TABLE leads ADD COLUMN gst_no TEXT, ADD COLUMN partner_type TEXT NOT NULL DEFAULT 'Individual', ADD COLUMN whatsapp_group_created BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE consultations ADD COLUMN interaction_channel TEXT, ADD COLUMN direct_store_meeting BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE store_visits ALTER COLUMN consultation_id DROP NOT NULL;
+ALTER TABLE partners ADD CONSTRAINT partner_type_values CHECK(partner_type IN ('Company','Individual'));
+ALTER TABLE leads ADD CONSTRAINT lead_partner_type_values CHECK(partner_type IN ('Company','Individual'));
+ALTER TABLE consultations ADD CONSTRAINT consultation_channel_values CHECK(interaction_channel IS NULL OR interaction_channel IN ('ground','store','caller','head'));
+COMMIT;

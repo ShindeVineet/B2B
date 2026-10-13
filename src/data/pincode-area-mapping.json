@@ -1,0 +1,584 @@
+{
+  "560001": {
+    "primary_areas": "MG Road, Brigade Road, Cubbon Road, Vasanth Nagar (part)",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560002": {
+    "primary_areas": "Bangalore City H.O., Avenue Road, Chickpet (part), Chamrajpet (part)",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560003": {
+    "primary_areas": "Malleshwaram, Palace Guttahalli, Vyalikaval, Swimming Pool Extension",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560004": {
+    "primary_areas": "Basavanagudi, Lalbagh West, Shankarpura, Mavalli",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560005": {
+    "primary_areas": "Fraser Town, Jeevanahalli, Cox Town",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560006": {
+    "primary_areas": "J.C. Nagar, RT Nagar (part)",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560007": {
+    "primary_areas": "Agram, Air Force Hospital area",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Sarjapur Road"
+  },
+  "560008": {
+    "primary_areas": "Ulsoor, Halasuru, Cambridge Layout",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Sarjapur Road"
+  },
+  "560009": {
+    "primary_areas": "Majestic, Bangalore District Office Building area",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560010": {
+    "primary_areas": "Rajajinagar, Bhashyam Circle",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560011": {
+    "primary_areas": "Jayanagar 3rd Block, Madhavan Park",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560012": {
+    "primary_areas": "Indian Institute of Science (IISc), Mathikere (part)",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560013": {
+    "primary_areas": "Jalahalli, Jalahalli East/West",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560014": {
+    "primary_areas": "Jalahalli Camp",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560015": {
+    "primary_areas": "MS Ramaiah Road, Mathikere (part)",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560016": {
+    "primary_areas": "Doorvaninagar, Ramamurthy Nagar, TC Palya",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560017": {
+    "primary_areas": "Old Airport Road, Murugeshpalya, Konena Agrahara",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Sarjapur Road"
+  },
+  "560018": {
+    "primary_areas": "Chamrajpet, Chamrajpet West",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560019": {
+    "primary_areas": "Gaviopuram Extension, Hanumanthnagar",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560020": {
+    "primary_areas": "Seshadripuram, Kumara Park East/West",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560021": {
+    "primary_areas": "Gayathrinagar, Srirampuram",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560022": {
+    "primary_areas": "Yeshwanthpur, Goraguntepalya",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560023": {
+    "primary_areas": "Peenya Dasarahalli (part)",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560024": {
+    "primary_areas": "Hebbal, RT Nagar, Anandnagar",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560025": {
+    "primary_areas": "Richmond Town, Residency Road, Langford Town",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560026": {
+    "primary_areas": "Byatarayanapura (Mysore Road), Deepanjalinagar, Bapujinagar",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560027": {
+    "primary_areas": "Wilson Garden, Shanti Nagar (part)",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560029": {
+    "primary_areas": "Dharmaram College area, SG Palya, Taverekere (Madiwala)",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560030": {
+    "primary_areas": "Adugodi, Lakkasandra",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560032": {
+    "primary_areas": "RT Nagar H.O., Ganganagar",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560033": {
+    "primary_areas": "Kammanahalli, Maruthi Sevanagar",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560034": {
+    "primary_areas": "Koramangala (Blocks 1-4), Agara Village (part)",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Sarjapur Road"
+  },
+  "560035": {
+    "primary_areas": "Sarjapur Road, Carmelram, Kaikondrahalli",
+    "ground_team_status": "In Process",
+    "priority": "High",
+    "store_target": "Sarjapur Road"
+  },
+  "560036": {
+    "primary_areas": "K R Puram, Devasandra",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Sarjapur Road"
+  },
+  "560037": {
+    "primary_areas": "Marathahalli, Doddanekkundi, Kundalahalli",
+    "ground_team_status": "In Process",
+    "priority": "",
+    "store_target": "Sarjapur Road"
+  },
+  "560038": {
+    "primary_areas": "Indiranagar, HAL 2nd Stage, Thippasandra",
+    "ground_team_status": "In Process",
+    "priority": "",
+    "store_target": "Sarjapur Road"
+  },
+  "560039": {
+    "primary_areas": "Nayandahalli, Mysore Road Industrial Area",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560040": {
+    "primary_areas": "Chandra Layout, Vijayanagar (part)",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560041": {
+    "primary_areas": "Jayanagar 4th/9th Block, Tilaknagar",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560042": {
+    "primary_areas": "Commercial Street, Shivajinagar",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560043": {
+    "primary_areas": "Kalyan Nagar, Banaswadi, Horamavu",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560045": {
+    "primary_areas": "Arabic College, Kadugondanahalli (KG Halli)",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560046": {
+    "primary_areas": "Benson Town, Tannery Road",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560047": {
+    "primary_areas": "Austin Town, Vivek Nagar, Ejipura",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Sarjapur Road"
+  },
+  "560048": {
+    "primary_areas": "Mahadevapura, Hoodi",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Sarjapur Road"
+  },
+  "560049": {
+    "primary_areas": "Bhattarahalli, Bidrahalli, Virgo Nagar",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Sarjapur Road"
+  },
+  "560050": {
+    "primary_areas": "Banashankari 1st Stage, Ashoknagar (BSK)",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560051": {
+    "primary_areas": "Shivaji Nagar (Cantonment), Broadway Road",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560052": {
+    "primary_areas": "Vasanth Nagar, High Grounds",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560053": {
+    "primary_areas": "Chickpet, Balepete",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560054": {
+    "primary_areas": "New BEL Road, RMV 2nd Stage",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560055": {
+    "primary_areas": "Malleshwaram West",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560056": {
+    "primary_areas": "Bangalore University (Jnana Bharathi)",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560057": {
+    "primary_areas": "Peenya Industrial Area, T. Dasarahalli",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560058": {
+    "primary_areas": "Peenya 1st/2nd Stage",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560059": {
+    "primary_areas": "Kengeri Satellite Town, RV Engineering College",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560060": {
+    "primary_areas": "Kengeri G.P.O.",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560061": {
+    "primary_areas": "Uttarahalli, Chikkalasandra, Subramanyapura",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560062": {
+    "primary_areas": "Doddakallasandra, Konanakunte, Kanakapura Road (inner)",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560063": {
+    "primary_areas": "Yelahanka Air Force Station",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560064": {
+    "primary_areas": "Yelahanka New Town, Attur, CRPF Campus",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560065": {
+    "primary_areas": "GKVK Campus (University of Agricultural Sciences)",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560066": {
+    "primary_areas": "Whitefield, Varthur Road, EPIP Zone",
+    "ground_team_status": "In Process",
+    "priority": "",
+    "store_target": "Sarjapur Road"
+  },
+  "560067": {
+    "primary_areas": "Kadugodi, Devanagundi",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Sarjapur Road"
+  },
+  "560068": {
+    "primary_areas": "Bommanahalli, Hosur Road, Begur",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560070": {
+    "primary_areas": "Banashankari 2nd Stage, Padmanabhanagar",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560071": {
+    "primary_areas": "Domlur, Intermediate Ring Road",
+    "ground_team_status": "In Process",
+    "priority": "High",
+    "store_target": "Sarjapur Road"
+  },
+  "560072": {
+    "primary_areas": "Nagarabhavi 1st Stage",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560073": {
+    "primary_areas": "Nagasandra, Bagalgunte, HMT Layout",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560074": {
+    "primary_areas": "Yeshwanthpur Industrial Suburb",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560075": {
+    "primary_areas": "Vignananagar, New Thippasandra (outer)",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Sarjapur Road"
+  },
+  "560076": {
+    "primary_areas": "Bannerghatta Road, BTM Layout 2nd Stage",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560077": {
+    "primary_areas": "Hennur Gardens, Kothanur, Dr. Shivarama Karanth Nagar",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560078": {
+    "primary_areas": "JP Nagar (Phases 1-6), J P Nagar H.O.",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560079": {
+    "primary_areas": "Basaveshwaranagar",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560083": {
+    "primary_areas": "Bannerghatta Village, Gottigere",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560085": {
+    "primary_areas": "Banashankari 3rd Stage, Girinagar",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560086": {
+    "primary_areas": "Mahalakshmi Layout, Basaveshwaranagar 2nd Stage",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560087": {
+    "primary_areas": "Varthur, Gunvur",
+    "ground_team_status": "In Process",
+    "priority": "",
+    "store_target": "Sarjapur Road"
+  },
+  "560090": {
+    "primary_areas": "Chikkabanavara, Abbigere",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560091": {
+    "primary_areas": "Vishwaneedam, Bapagrama",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560092": {
+    "primary_areas": "Amruthahalli, Byatarayanapura (Bellary Road)",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560093": {
+    "primary_areas": "C.V. Raman Nagar, Kaggadasapura",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Sarjapur Road"
+  },
+  "560094": {
+    "primary_areas": "Sanjaynagar, RMV Extension 2nd Stage",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560095": {
+    "primary_areas": "Koramangala 8th Block",
+    "ground_team_status": "In Process",
+    "priority": "",
+    "store_target": "Sarjapur Road"
+  },
+  "560096": {
+    "primary_areas": "Nelamangala Road / Peenya Area boundaries",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560097": {
+    "primary_areas": "Vidyaranyapura, Chikkabettahalli",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "560098": {
+    "primary_areas": "Rajarajeshwari Nagar (RR Nagar)",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560099": {
+    "primary_areas": "Bommasandra Industrial Area",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560100": {
+    "primary_areas": "Electronic City Phase 1 & 2",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "560102": {
+    "primary_areas": "HSR Layout (All Sectors)",
+    "ground_team_status": "In Process",
+    "priority": "High",
+    "store_target": "Sarjapur Road"
+  },
+  "560103": {
+    "primary_areas": "Bellandur, Devarabisanahalli, Outer Ring Road",
+    "ground_team_status": "In Process",
+    "priority": "",
+    "store_target": "Sarjapur Road"
+  },
+  "562106": {
+    "primary_areas": "Anekal, Bestamaranahalli",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bannerghatta Road"
+  },
+  "562107": {
+    "primary_areas": "Attibele, Bidaraguppe",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Sarjapur Road"
+  },
+  "562125": {
+    "primary_areas": "Dommasandra, Sarjapura",
+    "ground_team_status": "Completed",
+    "priority": "High",
+    "store_target": "Sarjapur Road"
+  },
+  "562149": {
+    "primary_areas": "Bagalur, Doddagubbi, Bandikodigehalli",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  },
+  "562157": {
+    "primary_areas": "Chikkajala, Doddajala, Vidyanagara",
+    "ground_team_status": "",
+    "priority": "",
+    "store_target": "Bagaluru"
+  }
+}

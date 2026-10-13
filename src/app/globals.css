@@ -1,0 +1,645 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+:root {
+  --background: #ffffff;
+  --foreground: #0f172a;
+  --brand-primary: #ff4500;
+  --brand-primary-hover: #e03e00;
+}
+
+body {
+  background-color: #ffffff;
+  color: #0f172a;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Oxygen,
+    Ubuntu,
+    Cantarell,
+    sans-serif;
+  min-height: 100vh;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Leaflet Container */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  background-color: #f8fafc !important;
+  font-family: inherit;
+  z-index: 10;
+}
+
+/* Modern Clean Glassmorphism Tooltips for Light Theme */
+.leaflet-tooltip.custom-glass-tooltip {
+  background: rgba(255, 255, 255, 0.98) !important;
+  backdrop-filter: none !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(255, 69, 0, 0.3) !important;
+  border-radius: 14px !important;
+  padding: 0 !important;
+  box-shadow:
+    0 15px 30px -5px rgba(0, 0, 0, 0.15),
+    0 0 10px rgba(255, 69, 0, 0.1) !important;
+}
+
+.leaflet-tooltip.custom-glass-tooltip::before {
+  border-top-color: #ffffff !important;
+}
+
+.leaflet-tooltip.custom-store-tooltip {
+  background: rgba(255, 255, 255, 0.96) !important;
+  backdrop-filter: none !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(255, 69, 0, 0.4) !important;
+  border-radius: 8px !important;
+  padding: 4px 8px !important;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1) !important;
+}
+
+.leaflet-tooltip.custom-store-tooltip::before {
+  border-top-color: #ffffff !important;
+}
+
+.custom-lead-pin,
+.custom-store-pin {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Leaflet Popup Content */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.15) !important;
+}
+
+.leaflet-popup-content {
+  margin: 12px 14px !important;
+  line-height: 1.4 !important;
+}
+
+/* Zoom Controls */
+.leaflet-control-zoom a {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  margin-bottom: 4px !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06) !important;
+}
+.leaflet-control-zoom a:hover {
+  background-color: #f8fafc !important;
+  color: #ff4500 !important;
+}
+
+.selectable-rows tbody tr[aria-selected="true"] {
+  background: #ffedd5 !important;
+  outline: 1px solid #fb923c;
+  outline-offset: -1px;
+}
+.selectable-rows tbody tr {
+  user-select: none;
+}
+
+/* Comfortable workspace controls, scoped to the management screens. */
+.workspace-page {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 32px;
+  color: #1e293b;
+  min-width: 0;
+  background: #f8fafc;
+  min-height: calc(100dvh - 64px);
+}
+.page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.page-eyebrow {
+  color: #ea580c;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  margin-bottom: 8px;
+}
+.page-heading h1 {
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 750;
+  letter-spacing: -0.025em;
+}
+.page-description {
+  color: #64748b;
+  margin-top: 10px;
+  max-width: 620px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.page-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.workspace-page button,
+.pin-dialog button {
+  cursor: pointer;
+  min-height: 40px;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+.workspace-page button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.workspace-page input:not([type="checkbox"]),
+.workspace-page select,
+.workspace-page textarea,
+.pin-dialog input {
+  min-height: 42px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: white;
+  padding: 9px 12px;
+  color: #0f172a;
+  font-size: 14px;
+  max-width: 100%;
+}
+.workspace-page label {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+.workspace-page input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  accent-color: #ea580c;
+  vertical-align: middle;
+}
+.workspace-page input:focus-visible,
+.workspace-page select:focus-visible,
+.workspace-page button:focus-visible,
+.pin-dialog input:focus-visible {
+  outline: 2px solid #fb923c;
+  outline-offset: 2px;
+}
+.workspace-page fieldset {
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 12px;
+}
+.workspace-page legend {
+  padding: 0 4px;
+  font-size: 12px;
+  color: #475569;
+  font-weight: 600;
+}
+.workspace-page .selectable-rows {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: white;
+}
+.workspace-page table {
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.workspace-page th {
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding: 14px 16px;
+}
+.workspace-page td {
+  padding: 16px;
+  border-top: 1px solid #f1f5f9;
+  vertical-align: top;
+  min-width: 100px;
+}
+.workspace-page tbody tr:hover {
+  background: #fff7ed;
+}
+.workspace-page [role="alert"]:not(:empty) {
+  padding: 12px 16px;
+  background: #fff1f2;
+  color: #be123c;
+  border-radius: 10px;
+  font-size: 13px;
+}
+.workspace-page [role="status"]:not(:empty) {
+  padding: 12px 16px;
+  background: #ecfdf5;
+  color: #047857;
+  border-radius: 10px;
+}
+.workspace-page [role="alert"]:empty,
+.workspace-page [role="status"]:empty {
+  display: none;
+}
+.workspace-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 4px #0f172a03;
+}
+.filter-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 16px;
+  padding: 20px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+}
+.filter-panel label > input,
+.filter-panel label > select {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+}
+.empty-state {
+  text-align: center;
+  padding: 64px 24px;
+  background: white;
+  border: 1px dashed #cbd5e1;
+  border-radius: 16px;
+  color: #64748b;
+  font-size: 14px;
+}
+@media (max-width: 640px) {
+  .workspace-page {
+    padding: 20px 16px;
+  }
+  .page-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .page-heading h1 {
+    font-size: 24px;
+  }
+  .workspace-card {
+    padding: 16px;
+  }
+  .filter-panel {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+}
+
+/* Stronger separation between the workspace, controls, and content. */
+body {
+  background-color: #edf2f7;
+}
+.workspace-page {
+  color: #172033;
+  min-height: calc(100vh - 64px);
+}
+.workspace-card {
+  border-color: #cbd5e1;
+  box-shadow: 0 3px 12px #0f172a0a;
+}
+.page-heading {
+  padding-bottom: 20px;
+  border-bottom: 2px solid #d5dee9;
+}
+.page-heading h1 {
+  color: #15243a;
+}
+.page-heading p {
+  color: #475569;
+  font-size: 14px;
+}
+.filter-panel {
+  background: #e2ebf3;
+  border-color: #bccbdc;
+}
+.workspace-page label,
+.workspace-page legend {
+  color: #334155;
+  font-size: 13px;
+}
+.workspace-page fieldset {
+  background: #eaf0f6;
+  border: 1px solid #ced9e5;
+}
+.workspace-page input:not([type="checkbox"]),
+.workspace-page select,
+.workspace-page textarea {
+  background: #fff;
+  color: #172033;
+  border-color: #94a3b8;
+}
+.workspace-page input::placeholder,
+.workspace-page textarea::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
+.workspace-page button {
+  cursor: pointer;
+}
+.workspace-page button:disabled {
+  cursor: not-allowed;
+}
+.workspace-page button.border {
+  border-color: #94a3b8;
+  background-color: #f8fafc;
+  color: #1e293b;
+}
+.workspace-page th {
+  background: #dfe8f1;
+  color: #27374d;
+  font-size: 12px;
+}
+.workspace-page td {
+  border-color: #dbe3ec;
+  color: #263449;
+}
+.workspace-page tbody tr:nth-child(even) {
+  background: #f3f6fa;
+}
+.workspace-page tbody tr:hover {
+  background: #fff0df;
+}
+.workspace-page .text-slate-500 {
+  color: #475569;
+}
+.empty-state {
+  background: #e7edf4;
+  color: #475569;
+  border-color: #a9b9cb;
+}
+
+/* Shared Florzy surfaces and controls, including dialogs and onboarding. */
+body.florzy-app {
+  --brand-primary: #ff4500;
+  background:
+    radial-gradient(ellipse at 0% 0%, #ff45000c, transparent 45%), #f2f4f7;
+  color: #172033;
+}
+.florzy-app main {
+  min-width: 0;
+}
+.florzy-app :is(h1, h2, h3) {
+  letter-spacing: -0.02em;
+}
+.florzy-app
+  :is(.workspace-card, .filter-panel, .partner-form, section.bg-white) {
+  border-color: #d7dce3;
+  background: #fff7ed;
+  box-shadow: 0 8px 28px #19223208;
+}
+.florzy-app .page-heading {
+  border-bottom-color: #ff450026;
+}
+.florzy-app .page-eyebrow {
+  color: #ad3207;
+}
+.page-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  color: #ff4500;
+  background: #fff7ed;
+  border: 1px solid #ff45002e;
+  box-shadow:
+    inset 0 1px 0 white,
+    0 3px 10px #ff450009;
+}
+/* Dark text on orange maintains readable contrast; translucent highlights add glass. */
+body.florzy-app button,
+body.florzy-app a[role="button"],
+body.florzy-app .page-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 1px solid #ff450042;
+  border-radius: 11px;
+  background: #fff7ed;
+  color: #7c2d12;
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 3px 8px #59351a0a;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+  cursor: pointer;
+  max-width: 100%;
+}
+body.florzy-app
+  button:not([class*="p-"]):not([class*="px-"]):not([class*="py-"]) {
+  padding: 0.4rem 0.65rem;
+}
+body.florzy-app
+  button:is(
+    [class*="bg-blue-7"],
+    [class*="bg-indigo-"],
+    [class*="bg-[#ff4500]"],
+    [class*="bg-orange-6"]
+  ) {
+  background: #fff7ed;
+  color: #3b1300;
+  border-color: #e84608;
+  font-weight: 700;
+  box-shadow:
+    inset 0 1px 0 #ffffffb3,
+    0 4px 12px #ff450026;
+}
+body.florzy-app button:is([class*="bg-green-7"], [class*="bg-emerald-6"]) {
+  background: #fff7ed;
+  color: #14532d;
+  border-color: #86cda0;
+}
+body.florzy-app
+  button:is([class*="bg-red-"], [class*="text-red-"], [class*="bg-rose-"]) {
+  background: #fff7ed;
+  color: #991b1b;
+  border-color: #efaaaa;
+}
+body.florzy-app button:hover:not(:disabled) {
+  border-color: #ff4500;
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 5px 15px #ff45001c;
+}
+body.florzy-app button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.florzy-app :is(button, a, input, select, textarea):focus-visible {
+  outline: 3px solid #ff4500;
+  outline-offset: 3px;
+}
+.florzy-app input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.florzy-app select,
+.florzy-app textarea {
+  color: #172033;
+  background-color: #fffffff5;
+  border-color: #aeb9c7;
+  border-radius: 9px;
+}
+.florzy-app :is(input, textarea)::placeholder {
+  color: #627185;
+  opacity: 1;
+}
+.florzy-app :is(input[type="checkbox"], input[type="radio"], progress) {
+  accent-color: #ff4500;
+}
+.florzy-app th {
+  background-color: #fff0e5;
+  color: #5b2c18;
+}
+.florzy-app tbody tr:hover {
+  background-color: #fff5ed;
+}
+.partner-form-section {
+  padding: 22px;
+  border: 1px solid #dce1e8;
+  border-radius: 15px;
+  background: #ffffffd9;
+}
+.partner-form-section label {
+  color: #334155;
+  line-height: 1.5;
+}
+.partner-form-section :is(input, select) {
+  min-height: 44px;
+}
+.partner-form-actions {
+  padding-top: 20px;
+  border-top: 1px solid #ff45002e;
+}
+.partner-form-actions button {
+  min-height: 44px;
+}
+@media (max-width: 640px) {
+  .partner-form-section {
+    padding: 15px;
+  }
+  .partner-form-actions button {
+    flex: 1;
+  }
+  .florzy-app [role="dialog"] {
+    overflow-wrap: anywhere;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.florzy-app button {
+    transition: none;
+  }
+}
+
+/* Solid surfaces throughout the workspace. */
+body.florzy-app *,
+body.florzy-app *::before,
+body.florzy-app *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+body.florzy-app button {
+  background-image: none !important;
+  box-shadow: none !important;
+}
+body.florzy-app
+  button:is(
+    [class*="bg-blue-7"],
+    [class*="bg-indigo-"],
+    [class*="bg-[#ff4500]"],
+    [class*="bg-orange-6"]
+  ) {
+  background: #ff4500;
+  color: #fff;
+}
+body.florzy-app button:is([class*="bg-green-7"], [class*="bg-emerald-6"]) {
+  background: #dcfce7;
+}
+body.florzy-app
+  button:is([class*="bg-red-"], [class*="text-red-"], [class*="bg-rose-"]) {
+  background: #fee2e2;
+}
+body.florzy-app header {
+  background-color: #fff;
+}
+
+/* Workspace hierarchy: solid surfaces, legible forms, deliberate spacing. */
+body.florzy-app { background: #f3f5f9; }
+.florzy-app .workspace-page { max-width: 1440px; margin-inline: auto; padding: clamp(16px, 2.4vw, 32px); }
+.florzy-app .workspace-card { background: #fff; border: 1px solid #dce3ed; border-radius: 16px; padding: clamp(18px, 2vw, 26px); box-shadow: 0 3px 14px #17203308; }
+.florzy-app .workspace-page label { color: #334155; font-size: 13px; font-weight: 600; }
+.florzy-app .workspace-page :is(input:not([type=checkbox]):not([type=radio]),select,textarea) { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 9px; padding: 10px 12px; color: #172033; min-height: 42px; }
+.florzy-app .workspace-page button { border-radius: 9px; min-height: 36px; font-weight: 600; }
+.florzy-app .workspace-page button[aria-pressed=true] { background: #fff1eb; color: #c73500; border-color: #ff4500; }
+.florzy-app .workspace-page summary { cursor: pointer; font-weight: 650; color: #334155; padding-block: 10px; }
+.florzy-app .workspace-page h2 { letter-spacing: -.02em; }
+
+/* Consistent text-action sizing; map controls and image buttons retain their geometry. */
+body.florzy-app .workspace-page :is(button, a.btn):not(.leaflet-control button):not(:has(img)) {
+  min-height: 36px;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  border-radius: 9px;
+  align-self: center;
+  flex-shrink: 0;
+}
+body.florzy-app .workspace-page a.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+  font-weight: 600;
+}
+
+/* Shared compact information cards with consistent action rhythm. */
+.florzy-app .workspace-card {
+  padding: clamp(14px, 1.4vw, 20px);
+  border-radius: 14px;
+}
+.florzy-app .page-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+body.florzy-app .partner-form-actions button { min-height: 38px; padding: 8px 14px; font-size: 13px; line-height: 20px; }
+.florzy-app .workspace-page article { overflow-wrap: anywhere; }

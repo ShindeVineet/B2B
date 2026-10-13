@@ -1,0 +1,827 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  super_admin
+  store_associate
+  b2b_head
+  regional_manager
+  ground_rep
+  analyst
+}
+
+model User {
+  calling_leads Lead[] @relation("CallingOwner")
+  created_routes PlannedRoute[] @relation("RouteCreator")
+  assigned_routes PlannedRoute[] @relation("RouteRep")
+  submitted_partners     Partner[]              @relation("PartnerSubmitter")
+  reviewed_partners      Partner[]              @relation("PartnerReviewer")
+  partner_documents      PartnerDocument[]
+  partner_activity       PartnerActivity[]
+  partner_notifications  PartnerNotification[]
+  geocode_jobs           GeocodeJob[]
+  photo_assets           PhotoAsset[]
+  call_logs              CallLog[]
+  follow_ups             FollowUp[]
+  workflow_notifications WorkflowNotification[]
+
+  route_snapshots     RouteSnapshot[]
+  trip_assignments    TripAssignment[] @relation("AssignmentRep")
+  created_assignments TripAssignment[] @relation("AssignmentManager")
+  notifications       Notification[]
+
+  id            String   @id @default(cuid())
+  name          String
+  phone         String?
+  email         String   @unique
+  role          Role     @default(ground_rep)
+  store_id      String?
+  region        String?
+  active        Boolean  @default(true)
+  password_hash String
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  assigned_store Store?         @relation("UserStore", fields: [store_id], references: [id])
+  managed_stores Store[]        @relation("StoreManager")
+  assigned_leads Lead[]         @relation("GroundRepLeads")
+  activity_logs  ActivityLog[]
+  consultations  Consultation[]
+  trip_plans     TripPlan[]
+
+  @@map("users")
+}
+
+model Store {
+  scheduled_visits StoreVisit[]
+  service_pincodes StoreServicePincode[]
+  id               String                @id @default(cuid())
+  name             String
+  address          String
+  pin_code         String
+  google_map_link  String?
+  lat              Float
+  lng              Float
+  radius_km        Float                 @default(10)
+  region           String
+  manager_id       String?
+  active           Boolean               @default(true)
+  created_at       DateTime              @default(now())
+  updated_at       DateTime              @updatedAt
+
+  manager     User?  @relation("StoreManager", fields: [manager_id], references: [id])
+  staff_users User[] @relation("UserStore")
+  leads       Lead[] @relation("StoreLeads")
+
+  @@map("stores")
+}
+
+model Lead {
+  gst_no String?
+  partner_type String @default("Individual")
+  whatsapp_group_created Boolean @default(false)
+  original_data Json @default("{}")
+  owner_name String?
+  intake_team String @default("ground")
+  store_visits StoreVisit[]
+  calling_associate_id String?
+  calling_associate User? @relation("CallingOwner", fields: [calling_associate_id], references: [id], onDelete: SetNull)
+  linkedin_lead_id String? @unique
+  linkedin_data Json?
+  @@index([calling_associate_id])
+  route_memberships RouteLead[]
+  lead_code              String                 @unique @default(dbgenerated("next_lead_code()"))
+  phones                 LeadPhone[]
+  partners               Partner[]
+  geocode_confidence     String?
+  geocode_issue_reason   String?
+  geocode_candidates     Json?
+  geocode_flagged_at     DateTime?
+  cannot_locate          Boolean                @default(false)
+  mapping_jobs           GeocodeJobItem[]
+  photos                 PhotoAsset[]
+  cold_case              ColdLeadCase?
+  call_logs              CallLog[]
+  follow_up              FollowUp?
+  workflow_notifications WorkflowNotification[]
+
+  location_verified Boolean        @default(false)
+  geocode_source    GeocodeSource?
+  geocode_status    GeocodeStatus?
+  status_entered_at DateTime?
+
+  id                     String    @id @default(cuid())
+  scraped_date           DateTime?
+  lead_source            String?
+  category               String?
+  company_name           String
+  phone_no               String?
+  pin_code               String?
+  address                String?
+  lat                    Float?
+  lng                    Float?
+  google_map_link        String?
+  status                 String    @default("New") // New, Assigned, Hot, Cold, Converted, Lost
+  region                 String?
+  website                String?
+  reviews_count          Int?
+  call_outcome           String?
+  call_date              DateTime?
+  notes                  String?
+  extra_notes            String?
+  outcome                String?
+  assigned_visit_date    DateTime?
+  assigned_store_id      String?
+  assigned_ground_rep_id String?
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+
+  store         Store?         @relation("StoreLeads", fields: [assigned_store_id], references: [id], onDelete: SetNull)
+  ground_rep    User?          @relation("GroundRepLeads", fields: [assigned_ground_rep_id], references: [id], onDelete: SetNull)
+  activity_logs ActivityLog[]
+  consultations Consultation[]
+  trip_leads    TripLead[]
+
+  @@index([phone_no, pin_code])
+  @@index([status])
+  @@index([region])
+  @@index([assigned_store_id])
+  @@index([assigned_ground_rep_id])
+  @@map("leads")
+}
+
+model Consultation {
+  interaction_channel String?
+  direct_store_meeting Boolean @default(false)
+  store_visit StoreVisit?
+  trip_lead_id String? @unique
+  visit TripLead? @relation(fields: [trip_lead_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  alternate_mobile_number String?
+  checklist            Json?
+  visiting_card_photos Json?
+  responses            Json?
+  company_name         String?
+  ground_staff_name    String?
+
+  visit_lat           Float?
+  visit_lng           Float?
+  designation         String?
+  email               String?
+  lead_type           String?
+  current_lead_status String?
+  next_follow_up_date DateTime? @db.Date
+  primary_pain_point  String?
+  competitor_involved String?
+  site_photos         Json      @default("[]")
+
+  id                   String   @id @default(cuid())
+  lead_id              String
+  rep_id               String
+  visit_date           DateTime @default(now())
+  decision_maker_name  String?
+  decision_maker_phone String?
+  interest_level       String? // High, Medium, Low, Not Interested
+  products_discussed   String?
+  budget_range         String?
+  next_steps           String?
+  outcome              String // Hot, Warm, Cold, Converted, Not Interested, Reschedule
+  notes                String?
+  created_at           DateTime @default(now())
+
+  lead Lead @relation(fields: [lead_id], references: [id], onDelete: Cascade)
+  rep  User @relation(fields: [rep_id], references: [id], onDelete: Cascade)
+
+  @@index([lead_id])
+  @@index([rep_id])
+  @@map("consultations")
+}
+
+model TripPlan {
+  assignment TripAssignment?
+
+  id            String   @id @default(cuid())
+  ground_rep_id String
+  name          String
+  start_date    DateTime
+  end_date      DateTime
+  leads_per_day Int      @default(10)
+  status        String   @default("active")
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  ground_rep User       @relation(fields: [ground_rep_id], references: [id], onDelete: Cascade)
+  trip_leads TripLead[]
+
+  @@map("trip_plans")
+}
+
+model TripLead {
+  route_id String?
+  route PlannedRoute? @relation(fields: [route_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  consultation Consultation?
+  created_at DateTime @default(now())
+  status                  String        @default("pending")
+  missed_reason           MissedReason?
+  missed_reason_note      String?
+  original_scheduled_date DateTime?     @db.Date
+  missed_events           MissedVisit[]
+
+  id             String   @id @default(cuid())
+  trip_id        String
+  lead_id        String
+  scheduled_date DateTime
+  sequence_order Int      @default(0)
+  completed      Boolean  @default(false)
+
+  trip TripPlan @relation(fields: [trip_id], references: [id], onDelete: Cascade)
+  lead Lead     @relation(fields: [lead_id], references: [id], onDelete: Cascade)
+
+  @@index([trip_id])
+  @@index([lead_id])
+  @@index([scheduled_date])
+  @@map("trip_leads")
+}
+
+model PincodeGeocache {
+  pin_code   String   @id
+  lat        Float
+  lng        Float
+  district   String?
+  state      String?
+  created_at DateTime @default(now())
+
+  @@map("pincode_geocache")
+}
+
+model AddressGeocache {
+  id            String   @id @default(cuid())
+  address_query String   @unique
+  lat           Float
+  lng           Float
+  display_name  String?
+  created_at    DateTime @default(now())
+
+  @@map("address_geocache")
+}
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  lead_id    String
+  actor_id   String?
+  action     String
+  old_value  String?
+  new_value  String?
+  created_at DateTime @default(now())
+
+  lead  Lead  @relation(fields: [lead_id], references: [id], onDelete: Cascade)
+  actor User? @relation(fields: [actor_id], references: [id], onDelete: SetNull)
+
+  @@index([lead_id])
+  @@map("activity_log")
+}
+
+enum GeocodeSource {
+  osm_local
+  overpass
+  google_link
+  company_search
+  address_search
+  pincode_dataset
+  nominatim
+  manual
+}
+
+enum GeocodeStatus {
+  mapping_issue
+  ok
+  invalid
+  mismatch_flagged
+}
+
+enum MissedReason {
+  personal
+  traffic_weather
+  office_closed
+  unreachable
+  other
+}
+
+enum NotificationType {
+  visit_missed
+  rep_missed_pattern
+}
+
+enum ClusteringMode {
+  compact_sequential
+  spread_coverage
+}
+
+model RouteSnapshot {
+  route_id String?
+  route PlannedRoute? @relation(fields: [route_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  cluster_span_km   Float?
+  id                String   @id @default(cuid())
+  ground_rep_id     String
+  route_date        DateTime @db.Date
+  ordered_lead_ids  Json
+  coordinates       Json
+  trip_lead_ids     Json
+  total_distance_km Float
+  version           Int      @default(1)
+  created_at        DateTime @default(now())
+  rep               User     @relation(fields: [ground_rep_id], references: [id])
+
+  @@unique([ground_rep_id, route_date, version])
+  @@map("route_snapshots")
+}
+
+model TripAssignment {
+  clustering_mode       ClusteringMode     @default(compact_sequential)
+  id                    String             @id @default(cuid())
+  trip_id               String             @unique
+  ground_rep_id         String
+  assigning_manager_id  String?
+  start_date            DateTime           @db.Date
+  end_date              DateTime           @db.Date
+  leads_per_day_default Int
+  base_working_days     Json               @default("[\"mon\",\"tue\",\"wed\",\"thu\",\"fri\",\"sat\"]")
+  trip                  TripPlan           @relation(fields: [trip_id], references: [id])
+  rep                   User               @relation("AssignmentRep", fields: [ground_rep_id], references: [id])
+  manager               User?              @relation("AssignmentManager", fields: [assigning_manager_id], references: [id])
+  weeks                 TripWeekOverride[]
+  capacities            TripDayCapacity[]
+
+  @@map("trip_assignments")
+}
+
+model TripWeekOverride {
+  id                 String         @id @default(cuid())
+  trip_assignment_id String
+  week_start_date    DateTime       @db.Date
+  working_days       Json
+  assignment         TripAssignment @relation(fields: [trip_assignment_id], references: [id])
+
+  @@unique([trip_assignment_id, week_start_date])
+  @@map("trip_week_overrides")
+}
+
+model TripDayCapacity {
+  id                 String         @id @default(cuid())
+  trip_assignment_id String
+  date               DateTime       @db.Date
+  capacity           Int
+  assignment         TripAssignment @relation(fields: [trip_assignment_id], references: [id])
+
+  @@unique([trip_assignment_id, date])
+  @@map("trip_day_capacities")
+}
+
+model MissedVisit {
+  id            String         @id @default(cuid())
+  trip_lead_id  String
+  reason        MissedReason
+  note          String?
+  original_date DateTime       @db.Date
+  new_date      DateTime       @db.Date
+  created_at    DateTime       @default(now())
+  trip_lead     TripLead       @relation(fields: [trip_lead_id], references: [id])
+  notifications Notification[]
+
+  @@index([created_at])
+  @@map("missed_visits")
+}
+
+model Notification {
+  id              String           @id @default(cuid())
+  user_id         String
+  type            NotificationType
+  missed_visit_id String
+  created_at      DateTime         @default(now())
+  read_at         DateTime?
+  user            User             @relation(fields: [user_id], references: [id])
+  missed_visit    MissedVisit      @relation(fields: [missed_visit_id], references: [id])
+
+  @@unique([user_id, type, missed_visit_id])
+  @@map("notifications")
+}
+
+model GeocodeQueryCache {
+  key        String   @id
+  results    Json
+  created_at DateTime @default(now())
+
+  @@map("geocode_query_cache")
+}
+
+model GeocodeProviderState {
+  name            String   @id
+  last_request_at DateTime
+
+  @@map("geocode_provider_state")
+}
+
+model GeocodeJob {
+  id          String           @id @default(cuid())
+  created_by  String
+  status      String           @default("queued")
+  created_at  DateTime         @default(now())
+  finished_at DateTime?
+  creator     User             @relation(fields: [created_by], references: [id])
+  items       GeocodeJobItem[]
+
+  @@map("geocode_jobs")
+}
+
+model GeocodeJobItem {
+  search_stage String @default("local")
+  next_attempt_at DateTime? @db.Timestamptz
+  retry_cycles Int @default(0)
+  id          String     @id @default(cuid())
+  job_id      String
+  lead_id     String
+  status      String     @default("pending")
+  attempts    Int        @default(0)
+  error       String?
+  lease_until DateTime?
+  job         GeocodeJob @relation(fields: [job_id], references: [id])
+  lead        Lead       @relation(fields: [lead_id], references: [id])
+
+  @@unique([job_id, lead_id])
+  @@index([status, lease_until])
+  @@index([status, next_attempt_at], map: "geocode_retry_due")
+  @@map("geocode_job_items")
+}
+
+model FormField {
+  id            String  @id @default(cuid())
+  key           String  @unique
+  label         String
+  type          String
+  required      Boolean @default(false)
+  options       Json?
+  display_order Int
+  active        Boolean @default(true)
+  max_files     Int?
+  required_when Json?
+
+  @@map("form_fields")
+}
+
+model PhotoAsset {
+  id         String   @id @default(cuid())
+  lead_id    String
+  owner_id   String
+  filename   String   @unique
+  mime_type  String
+  size_bytes Int
+  created_at DateTime @default(now())
+  lead       Lead     @relation(fields: [lead_id], references: [id])
+  owner      User     @relation(fields: [owner_id], references: [id])
+
+  @@map("photo_assets")
+}
+
+model ColdLeadConfig {
+  id                String   @id @default("default")
+  outcome_rule      Boolean  @default(true)
+  checklist_rule    Boolean  @default(true)
+  low_interest_rule Boolean  @default(true)
+  updated_at        DateTime @updatedAt
+
+  @@map("cold_lead_config")
+}
+
+model ColdLeadCase {
+  id              String    @id @default(cuid())
+  lead_id         String    @unique
+  consultation_id String
+  rules           Json
+  flagged_at      DateTime  @default(now())
+  resolved_at     DateTime?
+  lead            Lead      @relation(fields: [lead_id], references: [id])
+
+  @@index([resolved_at, flagged_at])
+  @@map("cold_lead_cases")
+}
+
+model CallLog {
+  id                  String    @id @default(cuid())
+  lead_id             String
+  actor_id            String
+  outcome             String
+  notes               String
+  reason              String?
+  callback_date       DateTime? @db.Date
+  next_follow_up_date DateTime? @db.Date
+  created_at          DateTime  @default(now())
+  lead                Lead      @relation(fields: [lead_id], references: [id])
+  actor               User      @relation(fields: [actor_id], references: [id])
+
+  @@index([lead_id, created_at])
+  @@map("call_logs")
+}
+
+model FollowUp {
+  id       String   @id @default(cuid())
+  lead_id  String   @unique
+  rep_id   String
+  due_date DateTime @db.Date
+  active   Boolean  @default(true)
+  lead     Lead     @relation(fields: [lead_id], references: [id])
+  rep      User     @relation(fields: [rep_id], references: [id])
+
+  @@map("follow_ups")
+}
+
+model WorkflowNotification {
+  id         String    @id @default(cuid())
+  user_id    String
+  lead_id    String
+  type       String
+  dedupe_key String    @unique
+  message    String
+  read_at    DateTime?
+  created_at DateTime  @default(now())
+  user       User      @relation(fields: [user_id], references: [id])
+  lead       Lead      @relation(fields: [lead_id], references: [id])
+
+  @@map("workflow_notifications")
+}
+
+enum LeadPhoneLabel {
+  primary
+  alternate
+  whatsapp
+}
+
+enum LeadPhoneSource {
+  import
+  manual
+  rep_added
+}
+
+enum ProfessionalType {
+  architect
+  interior_designer
+  builder
+  contractor
+  other
+}
+
+enum OnboardedFrom {
+  ground_visit
+  referral
+  website
+  walk_in
+  other
+}
+
+enum PartnerStatus {
+  pending_review
+  active
+  rejected
+}
+
+model LeadPhone {
+  id           String          @id @default(cuid())
+  lead_id      String
+  phone_number String
+  label        LeadPhoneLabel  @default(alternate)
+  is_primary   Boolean         @default(false)
+  source       LeadPhoneSource
+  created_at   DateTime        @default(now())
+  lead         Lead            @relation(fields: [lead_id], references: [id], onDelete: Cascade)
+
+  @@unique([lead_id, phone_number])
+  @@map("lead_phones")
+}
+
+model Partner {
+  company_legal_name String?
+  partner_type String @default("Individual")
+  referred_by_partner_id String?
+  referred_by Partner? @relation("PartnerReferrals", fields: [referred_by_partner_id], references: [id], onDelete: Restrict)
+  referrals Partner[] @relation("PartnerReferrals")
+  whatsapp_group_created Boolean @default(false)
+  additional_contacts Json @default("[]")
+  bank_document_url String?
+  lead_gen_source String?
+  lead_gen_source_other String?
+  phones                       PartnerPhone[]
+  id                           String                @id @default(cuid())
+  partner_code                 String                @unique @default(dbgenerated("next_partner_code()"))
+  source_lead_id               String?
+  source_lead_code             String?
+  onboarded_at                 DateTime              @default(now())
+  form_submitter_email         String?
+  company_firm_name            String
+  contact_person_name          String
+  designation                  String
+  mobile_number                String
+  business_email_id            String?
+  office_address               String
+  pincode                      String
+  city                         String
+  state                        String
+  type_of_professional         String
+  years_operating              String
+  specialized_in               String
+  expected_monthly_order_value Decimal               @db.Decimal(18, 2)
+  gst_registered               Boolean
+  gst_no                       String?
+  gst_certificate_url          String?
+  pan_no                       String
+  pan_card_url                 String?
+  bank_account_name            String
+  bank_name                    String
+  branch                       String
+  account_no                   String
+  ifsc_code                    String
+  onboarded_from               OnboardedFrom?
+  partner_status               PartnerStatus         @default(pending_review)
+  rejection_reason             String?
+  reviewed_by                  String?
+  reviewed_at                  DateTime?
+  submitted_by                 String
+  region_override              String?
+  is_migrated_historical       Boolean               @default(false)
+  created_at                   DateTime              @default(now())
+  updated_at                   DateTime              @updatedAt
+  source_lead                  Lead?                 @relation(fields: [source_lead_id], references: [id], onDelete: SetNull)
+  reviewer                     User?                 @relation("PartnerReviewer", fields: [reviewed_by], references: [id])
+  submitter                    User                  @relation("PartnerSubmitter", fields: [submitted_by], references: [id])
+  documents                    PartnerDocument[]
+  activity                     PartnerActivity[]
+  notifications                PartnerNotification[]
+
+  @@index([mobile_number])
+  @@index([gst_no])
+  @@index([source_lead_id])
+  @@map("partners")
+}
+
+model PartnerDocument {
+  id         String   @id @default(cuid())
+  partner_id String?
+  owner_id   String
+  filename   String   @unique
+  mime_type  String
+  size_bytes Int
+  created_at DateTime @default(now())
+  partner    Partner? @relation(fields: [partner_id], references: [id])
+  owner      User     @relation(fields: [owner_id], references: [id])
+
+  @@map("partner_documents")
+}
+
+model PartnerActivity {
+  id         String   @id @default(cuid())
+  partner_id String
+  actor_id   String
+  action     String
+  old_value  Json?
+  new_value  Json?
+  created_at DateTime @default(now())
+  partner    Partner  @relation(fields: [partner_id], references: [id])
+  actor      User     @relation(fields: [actor_id], references: [id])
+
+  @@index([partner_id, created_at])
+  @@map("partner_activity_log")
+}
+
+model PartnerNotification {
+  id         String    @id @default(cuid())
+  partner_id String
+  user_id    String
+  message    String
+  read_at    DateTime?
+  created_at DateTime  @default(now())
+  partner    Partner   @relation(fields: [partner_id], references: [id])
+  user       User      @relation(fields: [user_id], references: [id])
+
+  @@index([user_id, read_at])
+  @@map("partner_notifications")
+}
+
+model PartnerCityRegion {
+  city   String @id
+  region String
+
+  @@map("partner_city_regions")
+}
+
+model PartnerPhone {
+  id           String  @id @default(cuid())
+  partner_id   String
+  phone_number String
+  partner      Partner @relation(fields: [partner_id], references: [id], onDelete: Cascade)
+
+  @@unique([partner_id, phone_number])
+  @@map("partner_phones")
+}
+
+model StoreServicePincode {
+  store_id String
+  pin_code String
+  store    Store  @relation(fields: [store_id], references: [id], onDelete: Cascade)
+
+  @@id([store_id, pin_code])
+  @@index([pin_code])
+  @@map("store_service_pincodes")
+}
+
+model OsmPoiIndex {
+  osm_id String @id
+  name String
+  normalized_name String
+  lat Float
+  lng Float
+  address String @default("")
+  kind String
+  imported_at DateTime @default(now()) @db.Timestamptz
+  @@index([normalized_name(ops: raw("gin_trgm_ops"))], type: Gin, map: "osm_poi_name_trgm")
+  @@index([lat, lng], map: "osm_poi_location")
+  @@map("osm_poi_index")
+}
+model OsmPoiRefresh {
+  id String @id @default("india")
+  source_url String
+  refreshed_at DateTime? @db.Timestamptz
+  poi_count Int @default(0)
+  source_timestamp String?
+  last_error String?
+  @@map("osm_poi_refresh")
+}
+
+
+enum PlannedRouteStatus {
+  draft
+  ready
+  assigned
+  completed
+}
+
+model PlannedRoute {
+  id String @id @default(cuid())
+  name String
+  status PlannedRouteStatus @default(draft)
+  area_filter Json
+  target_count Int
+  created_by String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  batch_id String
+  remainder_lead_ids Json?
+  total_distance_km Float @default(0)
+  coordinates Json @default("[]")
+  ground_rep_id String?
+  route_date DateTime? @db.Date
+  assigned_trip_id String?
+  creator User @relation("RouteCreator", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  rep User? @relation("RouteRep", fields: [ground_rep_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  leads RouteLead[]
+  visits TripLead[]
+  snapshots RouteSnapshot[]
+  @@index([batch_id])
+  @@map("routes")
+}
+
+model RouteLead {
+  id String @id @default(cuid())
+  route_id String
+  lead_id String
+  sequence_order Int
+  route PlannedRoute @relation(fields: [route_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  lead Lead @relation(fields: [lead_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  @@unique([route_id, lead_id])
+  @@index([lead_id])
+  @@map("route_leads")
+}
+
+model CallingRotation {
+  key String @id
+  last_user_id String?
+  @@map("calling_rotation")
+}
+
+model StoreVisit {
+  id String @id @default(cuid())
+  lead_id String
+  store_id String
+  consultation_id String? @unique
+  scheduled_at DateTime @db.Timestamptz
+  status String @default("scheduled")
+  created_at DateTime @default(now())
+  lead Lead @relation(fields: [lead_id], references: [id], onDelete: Restrict)
+  store Store @relation(fields: [store_id], references: [id], onDelete: Restrict)
+  consultation Consultation? @relation(fields: [consultation_id], references: [id], onDelete: Restrict)
+  @@index([status, scheduled_at])
+  @@map("store_visits")
+}

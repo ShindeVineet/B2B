@@ -1,0 +1,111 @@
+{
+  "at": "2026-10-01T07:34:32.504Z",
+  "population": 119,
+  "sampleSize": 20,
+  "method": "20 lowest SHA-256(free-v2:lead-id), deterministic uniform sample; no lead writes",
+  "accepted": 1,
+  "issues": 19,
+  "providerErrors": 0,
+  "results": [
+    {
+      "id": "41dafd34-a5bb-47b7-9e46-efd5ed06ef32",
+      "status": "mapping_issue",
+      "reason": "not_found"
+    },
+    {
+      "id": "4055346f-cf0c-46a6-ac6b-cc354cac6e06",
+      "status": "mapping_issue",
+      "reason": "not_found"
+    },
+    {
+      "id": "aa8faeaa-f2be-49b9-8796-fd769840811d",
+      "status": "mapping_issue",
+      "reason": "not_found"
+    },
+    {
+      "id": "fef7c1df-2d6b-4f74-8f9c-6454abdf8544",
+      "status": "mapping_issue",
+      "reason": "not_found"
+    },
+    {
+      "id": "8750c49c-ebe2-448a-9dd2-94b69a94ef5d",
+      "status": "mapping_issue",
+      "reason": "ambiguous_multiple_matches"
+    },
+    {
+      "id": "6831b176-6139-4e9e-b187-ecde06da135b",
+      "status": "mapping_issue",
+      "reason": "not_found"
+    },
+    {
+      "id": "446f5807-d0f4-4902-8dc5-4cd250334900",
+      "status": "mapping_issue",
+      "reason": "not_found"
+    },
+    {
+      "id": "72d397da-ff06-4a3d-b7cc-e8a6884fb3ac",
+      "status": "mapping_issue",
+      "reason": "not_found"
+    },
+    {
+      "id": "260f113f-0efc-4f85-9661-242356e2ad74",
+      "status": "mapping_issue",
+      "reason": "not_found"
+    },
+    {
+      "id": "a7b2620c-b65e-4242-b6bc-b106c24af91b",
+      "status": "mapping_issue",
+      "reason": "not_found"
+    },
+    {
+      "id": "6a7d0803-0010-4707-9907-210e6f75f765",
+      "status": "mapping_issue",
+      "reason": "not_found"
+    },
+    {
+      "id": "cmui7em4s0018xzmhomfh1wc7",
+      "status": "mapping_issue",
+      "reason": "ambiguous_multiple_matches"
+    },
+    {
+      "id": "cmui7em4k000uxzmhb1el6pno",
+      "status": "ok",
+      "source": "nominatim"
+    },
+    {
+      "id": "cmui7em4u001cxzmhr6fo2g48",
+      "status": "mapping_issue",
+      "reason": "ambiguous_multiple_matches"
+    },
+    {
+      "id": "f9ef4069-cd6a-4906-8cfb-92772dbabf26",
+      "status": "mapping_issue",
+      "reason": "not_found"
+    },
+    {
+      "id": "5d0b8b68-f517-4235-adfb-0b06fdd01b58",
+      "status": "mapping_issue",
+      "reason": "not_found"
+    },
+    {
+      "id": "c9c66f63-fbc6-4b1a-b2f2-c9bed6f51364",
+      "status": "mapping_issue",
+      "reason": "not_found"
+    },
+    {
+      "id": "cmui7em52001sxzmhxyz3fybd",
+      "status": "mapping_issue",
+      "reason": "ambiguous_multiple_matches"
+    },
+    {
+      "id": "3d0ad53b-dc7e-4cef-87aa-40480cfd8112",
+      "status": "mapping_issue",
+      "reason": "not_found"
+    },
+    {
+      "id": "cfa457f5-845a-459e-be38-41aa46b33600",
+      "status": "mapping_issue",
+      "reason": "not_found"
+    }
+  ]
+}

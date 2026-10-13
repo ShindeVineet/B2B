@@ -1,0 +1,175 @@
+
+.review {
+  min-width: 0;
+}
+.summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.summary > span {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 9px 13px;
+  background: #f1f5f9;
+  border-radius: 9px;
+  font-size: 13px;
+  color: #475569;
+}
+.summary strong {
+  color: #172033;
+}
+.summary .status {
+  background: #fff0e8;
+  color: #bc3608;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+.note {
+  font-size: 12px;
+  color: #64748b;
+  margin: 0;
+}
+.reviewGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.itinerary {
+  min-width: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+  overflow: hidden;
+}
+.itineraryHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background: white;
+}
+.itineraryHeader h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 750;
+}
+.itineraryHeader > span {
+  color: #64748b;
+  font-size: 12px;
+}
+.distances {
+  padding: 0 16px;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 12px;
+}
+.distances > div {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  color: #64748b;
+}
+.distances[open] {
+  max-height: 180px;
+  overflow: auto;
+  padding-bottom: 10px;
+}
+.stopList {
+  list-style: none;
+  padding: 12px;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+  max-height: 470px;
+  overflow: auto;
+}
+.stopCard {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+  padding: 14px;
+  min-width: 0;
+}
+.stopHeading {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.stopNumber {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: #fff1e9;
+  color: #ce3c0a;
+  font-size: 12px;
+  font-weight: 750;
+}
+.stopHeading h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+  color: #172033;
+  overflow-wrap: anywhere;
+}
+.stopHeading p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #64748b;
+}
+.stopActions,
+.visitActions {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.stopActions {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+.review .stopActions button {
+  margin: 0;
+  min-height: 30px;
+  padding: 5px 9px;
+  font-size: 11px;
+  border: 1px solid #dbe2ec;
+  border-radius: 7px;
+  background: #fff;
+  color: #475569;
+  box-shadow: none;
+}
+.review .stopActions > button {
+  color: #be3434;
+  border-color: #f2dada;
+}
+.review .stopActions button:hover {
+  background: #f8fafc;
+}
+@media (max-width: 1000px) {
+  .reviewGrid {
+    grid-template-columns: 1fr;
+  }
+  .stopList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .stopList {
+    grid-template-columns: 1fr;
+    max-height: 520px;
+  }
+  .summary {
+    gap: 6px;
+  }
+}
+
