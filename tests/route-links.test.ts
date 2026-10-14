@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { routeLinks, fullRouteLink } from "../src/lib/route-links";
+import { routeLinks, fullRouteLink, routeLinkStopCount } from "../src/lib/route-links";
 test("every selected stop is represented across connected mobile-compatible route legs", () => {
   const stops = Array.from({ length: 11 }, (_, i) => ({
     lat: 12 + i / 100,
@@ -22,6 +22,14 @@ test("every selected stop is represented across connected mobile-compatible rout
     urls[1].searchParams.get("origin"),
     urls[0].searchParams.get("destination"),
   );
+  assert.equal(routeLinkStopCount(urls.map((url) => url.toString())), stops.length);
+});
+test("route coverage count includes every waypoint and destination across parts", () => {
+  const stops = Array.from({ length: 17 }, (_, i) => ({
+    lat: 12.8 + i / 100,
+    lng: 77.4 + i / 100,
+  }));
+  assert.equal(routeLinkStopCount(routeLinks(stops)), 17);
 });
 test("route links reject missing coordinates rather than dropping stops", () => {
   assert.throws(() =>

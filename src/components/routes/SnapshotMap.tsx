@@ -20,13 +20,17 @@ export default function SnapshotMap({
     east: number;
   }) => void;
 }) {
+  const [selecting, setSelecting] = useState(false),
+    [hint, setHint] = useState("");
   const ref = useRef<HTMLDivElement>(null);
   const callback = useRef(onAreaSelect);
+  const selectingRef = useRef(selecting);
   useEffect(() => {
     callback.current = onAreaSelect;
   }, [onAreaSelect]);
-  const [selecting, setSelecting] = useState(false),
-    [hint, setHint] = useState("");
+  useEffect(() => {
+    selectingRef.current = selecting;
+  }, [selecting]);
   const dataKey = JSON.stringify({ points, statuses, labels });
   const areaEnabled = !!onAreaSelect;
   useEffect(() => {
@@ -46,27 +50,60 @@ export default function SnapshotMap({
       attribution: "© OpenStreetMap contributors",
     }).addTo(map);
     let corner: L.LatLng | null = null;
+    let cornerMarker: L.CircleMarker | null = null;
+    let rectangle: L.Rectangle | null = null;
+    let handles: L.Marker[] = [];
+    const handleIcon = L.divIcon({
+      className: "",
+      html: '<span style="display:block;width:18px;height:18px;border-radius:50%;background:#ff4500;border:3px solid white;box-shadow:0 1px 5px #475569" title="Drag to resize"></span>',
+      iconSize: [18, 18],
+      iconAnchor: [9, 9],
+    });
+    const notify = (bounds: L.LatLngBounds) => callback.current?.({
+      south: bounds.getSouth(),
+      north: bounds.getNorth(),
+      west: bounds.getWest(),
+      east: bounds.getEast(),
+    });
+    const drawResizableRectangle = (bounds: L.LatLngBounds) => {
+      rectangle?.remove();
+      handles.forEach((handle) => handle.remove());
+      rectangle = L.rectangle(bounds, { color: "#ff4500", weight: 2 }).addTo(map);
+      const makeHandle = (position: L.LatLng, opposite: () => L.LatLng) => {
+        const marker = L.marker(position, { draggable: true, icon: handleIcon }).addTo(map);
+        marker.on("drag", () => rectangle?.setBounds(L.latLngBounds(marker.getLatLng(), opposite())));
+        marker.on("dragend", () => {
+          const resized = L.latLngBounds(marker.getLatLng(), opposite());
+          drawResizableRectangle(resized);
+          setHint("Rectangle resized. Drag either orange handle to adjust it again.");
+          notify(resized);
+        });
+        return marker;
+      };
+      handles = [
+        makeHandle(bounds.getSouthWest(), () => bounds.getNorthEast()),
+        makeHandle(bounds.getNorthEast(), () => bounds.getSouthWest()),
+      ];
+    };
     if (areaEnabled)
       map.on("click", (event: L.LeafletMouseEvent) => {
-        if (!selecting && !event.originalEvent.shiftKey) return;
+        if (!selectingRef.current && !event.originalEvent.shiftKey) return;
         if (!corner) {
           corner = event.latlng;
           setHint("First corner selected — click the opposite corner");
-          L.circleMarker(corner, { radius: 5 }).addTo(map);
+          cornerMarker?.remove();
+          cornerMarker = L.circleMarker(corner, { radius: 5 }).addTo(map);
           return;
         }
         const bounds = L.latLngBounds(corner, event.latlng);
-        L.rectangle(bounds, { color: "#ff4500", weight: 2 }).addTo(map);
+        cornerMarker?.remove();
+        cornerMarker = null;
+        drawResizableRectangle(bounds);
         corner = null;
         setHint(
-          "Rectangle selected. The lead selection below has been updated.",
+          "Rectangle selected. Drag either orange corner handle to resize it.",
         );
-        callback.current?.({
-          south: bounds.getSouth(),
-          north: bounds.getNorth(),
-          west: bounds.getWest(),
-          east: bounds.getEast(),
-        });
+        notify(bounds);
       });
     const valid = points.filter(inIndia);
     points.forEach((p, i) => {
@@ -114,7 +151,7 @@ export default function SnapshotMap({
       map.stop();
       map.remove();
     };
-  }, [dataKey, areaEnabled, selecting]);
+  }, [dataKey, areaEnabled]);
   return (
     <div className="space-y-2">
       {areaEnabled && (

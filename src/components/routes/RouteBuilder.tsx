@@ -91,6 +91,7 @@ export function RouteBuilder() {
     east: number;
   } | null>(null);
   const [areaMessage, setAreaMessage] = useState("");
+  const [generationError, setGenerationError] = useState("");
   const [remainderLeads, setRemainderLeads] = useState<Lead[]>([]);
   const [preview, setPreview] = useState<Preview | null>(null),
     [previewIndex, setPreviewIndex] = useState(0),
@@ -207,6 +208,29 @@ export function RouteBuilder() {
       "Selected area",
   };
   async function generate(save = false) {
+    const routesRequested = batch
+      ? k === ""
+        ? Math.floor(selection.size / n)
+        : Number(k)
+      : 1;
+    const needed = routesRequested * n;
+    if (!Number.isInteger(n) || n < 1 || n > 100) {
+      setGenerationError("Leads per route must be a whole number from 1 to 100.");
+      return;
+    }
+    if (!Number.isInteger(routesRequested) || routesRequested < 1) {
+      setGenerationError("There are not enough selected leads to create a complete route. Select more leads or reduce leads per route.");
+      return;
+    }
+    if (routesRequested > 1000) {
+      setGenerationError("Route count cannot exceed 1,000 routes in one batch.");
+      return;
+    }
+    if (needed > selection.size) {
+      setGenerationError(`This setup needs ${needed} leads (${routesRequested} routes × ${n} leads), but only ${selection.size} are selected. Reduce the route count or leads per route, or select ${needed - selection.size} more leads.`);
+      return;
+    }
+    setGenerationError("");
     await run(async () => {
       const d = await api("/api/route-plans", {
         lead_ids: [...selection],
@@ -567,6 +591,7 @@ export function RouteBuilder() {
               Generate / Regenerate preview
             </button>
           </div>
+          {generationError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{generationError}</p>}
           {pool.length > 0 && (
             <details>
               <summary>Select leads on the map</summary>

@@ -54,3 +54,14 @@ export function fullRouteLink(links: string[]): string | null {
     url.searchParams.set("waypoints", stops.slice(0, -1).join("|"));
   return url.toString().length <= 2048 ? url.toString() : null;
 }
+
+export function routeLinkStopCount(links: string[]) {
+  return links.reduce((count, link) => {
+    const url = new URL(link);
+    const waypoints = url.searchParams
+      .get("waypoints")
+      ?.split("|")
+      .filter(Boolean).length || 0;
+    return count + waypoints + (url.searchParams.get("destination") ? 1 : 0);
+  }, 0);
+}
