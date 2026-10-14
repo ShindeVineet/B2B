@@ -81,8 +81,8 @@ export async function PATCH(
     if (["analyst", "ground_rep"].includes(user.role))
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const body = await req.json();
-    if (user.role === "store_associate" && ["assigned_ground_rep_id", "assigned_store_id", "assigned_visit_date"].some(key => Object.hasOwn(body,key)))
-      return NextResponse.json({error:"Only Store Lead or B2B Head can assign leads"},{status:403});
+    if (user.role !== "b2b_head" && ["assigned_ground_rep_id", "assigned_store_id", "assigned_visit_date"].some(key => Object.hasOwn(body,key)))
+      return NextResponse.json({error:"Only the B2B Head can change lead assignments"},{status:403});
 
     if (
       body.assigned_store_id &&

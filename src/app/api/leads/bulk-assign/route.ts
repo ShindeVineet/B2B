@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import {
-  canUserManageLeads,
+  canAssignLeads,
   getLeadFilterForUser,
   getStoreFilterForUser,
 } from "@/lib/permissions";
@@ -14,8 +14,8 @@ import { RequestError, failure } from "@/lib/phase5/http";
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser(req);
-    if (!user || !canUserManageLeads(user))
-      throw new RequestError("Lead assignment permission required", 403);
+    if (!user || !canAssignLeads(user))
+      throw new RequestError("Only the B2B Head can change lead assignments", 403);
     const {
       leadIds,
       storeId,

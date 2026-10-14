@@ -18,6 +18,7 @@ import {
   type ConsultationRow,
 } from "@/components/consultations/ConsultationCard";
 import { PARTNER_FIELDS } from "@/lib/partners/fields";
+import { todayIndia } from "@/lib/phase5/calendar";
 type Partner = Record<string, unknown> & {
   id: string;
   partner_code: string;
@@ -32,6 +33,7 @@ type Detail = {
     action: string;
     created_at: string;
     actor: { name: string };
+    new_value?: { notes?: string; walk_in_date?: string } | null;
   }[];
   lead: null | {
     id: string;
@@ -87,6 +89,9 @@ export function PartnerDirectory({ role }: { role: string }) {
     [unassigned, setUnassigned] = useState(false),
     [city, setCity] = useState(""),
     [region, setRegion] = useState("");
+  const [walkInPartner, setWalkInPartner] = useState<Partner | null>(null),
+    [walkInNotes, setWalkInNotes] = useState(""),
+    [walkInBusy, setWalkInBusy] = useState(false);
   const load = () => api("/api/partners").then((d) => setRows(d.partners));
   useEffect(() => {
     let live = true;
@@ -143,6 +148,25 @@ export function PartnerDirectory({ role }: { role: string }) {
       setError((e as Error).message);
     } finally {
       setBusy(false);
+    }
+  }
+  async function logWalkIn() {
+    if (!walkInPartner || !walkInNotes.trim()) return;
+    setWalkInBusy(true);
+    setError("");
+    try {
+      await api(`/api/partners/${walkInPartner.id}/walk-ins`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: walkInNotes }),
+      });
+      setWalkInPartner(null);
+      setWalkInNotes("");
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setWalkInBusy(false);
     }
   }
   const filtered = rows.filter(
@@ -215,6 +239,24 @@ export function PartnerDirectory({ role }: { role: string }) {
         >
           {error}
         </p>
+      )}
+      {walkInPartner && (
+        <WorkspaceDialog
+          title={`Log a walk-in · ${walkInPartner.partner_code}`}
+          onClose={() => {
+            if (!walkInBusy) {
+              setWalkInPartner(null);
+              setWalkInNotes("");
+            }
+          }}
+        >
+          <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void logWalkIn(); }}>
+            <p className="text-sm font-semibold">{walkInPartner.company_firm_name}</p>
+            <label className="block text-sm">Walk-in date<input className="mt-1 block w-full rounded-lg border bg-slate-50 p-2" value={todayIndia()} readOnly /></label>
+            <label className="block text-sm">Notes<textarea autoFocus required maxLength={2000} rows={5} className="mt-1 block w-full rounded-lg border p-2" value={walkInNotes} onChange={(event) => setWalkInNotes(event.target.value)} placeholder="Reason for visit, discussion and next action" /></label>
+            <button disabled={walkInBusy || !walkInNotes.trim()} className="rounded-lg bg-[#ff4500] px-4 py-2 text-sm font-bold text-white">{walkInBusy ? "Saving…" : "Submit walk-in"}</button>
+          </form>
+        </WorkspaceDialog>
       )}
       {importing && <PartnerImport onDone={() => void load()} />}
       {form ? (
@@ -428,6 +470,7 @@ export function PartnerDirectory({ role }: { role: string }) {
           {detail.activity.map((a) => (
             <p key={a.id}>
               {a.created_at} · {a.actor.name} · {a.action}
+              {a.action === "PARTNER_WALK_IN" && a.new_value && <> · {a.new_value.walk_in_date} · {a.new_value.notes}</>}
             </p>
           ))}
         </section>
@@ -534,12 +577,15 @@ export function PartnerDirectory({ role }: { role: string }) {
                     {String(p.city || "—")} ·{" "}
                     {String(p.matched_region || "Unassigned region")}
                   </p>
-                  <button
-                    className="w-full border rounded-lg text-sm"
-                    onClick={() => void open(p.id)}
-                  >
-                    View partner
-                  </button>
+                  <div className="flex gap-2">
+                    {role === "store_associate" && <button className="flex-1 rounded-lg bg-[#ff4500] px-3 py-2 text-sm font-semibold text-white" onClick={() => { setWalkInPartner(p); setWalkInNotes(""); }}>Log a walk-in</button>}
+                    <button
+                      className="flex-1 border rounded-lg text-sm"
+                      onClick={() => void open(p.id)}
+                    >
+                      View partner
+                    </button>
+                  </div>
                 </article>
               ))}
           </div>

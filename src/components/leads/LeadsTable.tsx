@@ -22,7 +22,7 @@ import {
   Plus,
   Sparkles,
 } from "lucide-react";
-import { STATUS_CONFIG } from "@/lib/lead-status";
+import { FUNNEL_STATUS_CONFIG } from "@/lib/leads/funnel-status";
 import { formatDistance } from "@/lib/geo";
 import { ConsultationModal } from "../rep/ConsultationModal";
 
@@ -47,8 +47,11 @@ interface Lead {
   call_outcome?: string | null;
   assigned_store_id?: string | null;
   assigned_ground_rep_id?: string | null;
+  calling_associate_id?: string | null;
+  intake_team?: string | null;
   store?: { id: string; name: string } | null;
   ground_rep?: { id: string; name: string } | null;
+  calling_associate?: { id: string; name: string; email: string } | null;
   store_match_kind?: string;
   store_match_candidates?: { id: string; name: string }[];
   nearestStoreSuggestion?: {
@@ -88,6 +91,7 @@ export function LeadsTable() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [regionFilter, setRegionFilter] = useState("All");
   const [storeFilter, setStoreFilter] = useState("All");
+  const [workflowFilter, setWorkflowFilter] = useState("All");
 
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>(
     {},
@@ -143,7 +147,8 @@ export function LeadsTable() {
       } else if (!actual.toLowerCase().includes(value.toLowerCase()))
         return false;
     }
-    if (statusFilter !== "All" && lead.status !== statusFilter) return false;
+    if (statusFilter !== "All" && (lead.funnel_status || lead.status) !== statusFilter) return false;
+    if (workflowFilter !== "All" && lead.intake_team !== workflowFilter) return false;
     if (regionFilter !== "All" && lead.region !== regionFilter) return false;
     if (storeFilter !== "All") {
       if (storeFilter === "unassigned" && lead.assigned_store_id) return false;
@@ -166,8 +171,8 @@ export function LeadsTable() {
       if (!match) return false;
     }
     return true;
-  }), [leads, columnFilters, statusFilter, regionFilter, storeFilter, search]);
-  const filterKey = JSON.stringify([columnFilters, statusFilter, regionFilter, storeFilter, search, pageSize]);
+  }), [leads, columnFilters, statusFilter, workflowFilter, regionFilter, storeFilter, search]);
+  const filterKey = JSON.stringify([columnFilters, statusFilter, workflowFilter, regionFilter, storeFilter, search, pageSize]);
   const [previousFilterKey, setPreviousFilterKey] = useState(filterKey);
   if (previousFilterKey !== filterKey) {
     setPreviousFilterKey(filterKey);
@@ -321,7 +326,7 @@ export function LeadsTable() {
           Loading…
         </p>
       )}
-      {["b2b_head", "regional_manager"].includes(user?.role || "") && (
+      {user?.role === "b2b_head" && (
         <div className="space-y-3">
           
           <RecheckAllotment
@@ -342,8 +347,7 @@ export function LeadsTable() {
             FLORZY B2B Leads Pipeline & Funnel
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Browse, filter, search, and bulk-assign leads to stores and ground
-            reps.
+            Follow Calling Queue, ground routing, consultations and onboarding in one place.
           </p>
         </div>
 
@@ -365,6 +369,21 @@ export function LeadsTable() {
             Import Leads
           </a>
         </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          ["Calling Queue", leads.filter((lead) => lead.intake_team === "caller").length, "Phone follow-up and location completion"],
+          ["Ground pool", leads.filter((lead) => lead.intake_team === "ground" && !lead.assigned_ground_rep_id).length, "Route-ready and unassigned"],
+          ["Assigned", leads.filter((lead) => !!lead.assigned_ground_rep_id).length, "Owned by a ground team member"],
+          ["Onboarded", leads.filter((lead) => (lead.funnel_status || lead.status) === "Converted").length, "Active partner conversion"],
+        ].map(([label, count, description]) => (
+          <section key={String(label)} className="rounded-xl border border-slate-200 bg-white p-4">
+            <p className="text-xs font-semibold text-slate-500">{label}</p>
+            <p className="mt-1 text-2xl font-black text-[#ff4500]">{count}</p>
+            <p className="text-xs text-slate-500">{description}</p>
+          </section>
+        ))}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 rounded-xl border border-slate-200 bg-white p-3">
@@ -457,11 +476,24 @@ export function LeadsTable() {
             className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-700 focus:outline-none focus:border-[#ff4500]"
           >
             <option value="All">All Statuses</option>
-            {Object.keys(STATUS_CONFIG).map((st) => (
+            {Object.keys(FUNNEL_STATUS_CONFIG).map((st) => (
               <option key={st} value={st}>
                 {st}
               </option>
             ))}
+          </select>
+
+          <select
+            aria-label="Workflow team"
+            value={workflowFilter}
+            onChange={(e) => setWorkflowFilter(e.target.value)}
+            className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-700 focus:outline-none focus:border-[#ff4500]"
+          >
+            <option value="All">All workflows</option>
+            <option value="caller">Calling Queue</option>
+            <option value="ground">Ground routing</option>
+            <option value="store">Store / walk-in</option>
+            <option value="head">B2B Head</option>
           </select>
 
           {/* Store Filter */}
@@ -505,7 +537,7 @@ export function LeadsTable() {
       </div>
 
       {/* Floating Bulk Action Bar */}
-      {selectedIds.size > 0 && (
+      {user?.role === "b2b_head" && selectedIds.size > 0 && (
         <div className="bg-white border border-[#ff4500]/60 rounded-2xl p-4 shadow-xl flex flex-wrap items-center justify-between gap-3 animate-in slide-in-from-top-2 duration-150">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[#ff4500] animate-pulse" />
@@ -561,7 +593,7 @@ export function LeadsTable() {
               className="text-xs bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-slate-800 focus:outline-none"
             >
               <option value="">Status...</option>
-              {Object.keys(STATUS_CONFIG).map((s) => (
+              {Object.keys(FUNNEL_STATUS_CONFIG).map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
@@ -609,7 +641,7 @@ export function LeadsTable() {
           <span>Page {currentPage} of {pageCount}</span>
           <button className="rounded-lg border px-3 py-2" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)}>Next</button>
         </div>
-        <div className="w-full text-xs text-slate-600">The header checkbox selects this page. Selections carry across pages. <button className="underline px-2 py-1" disabled={!filteredLeads.length} onClick={() => setSelectedIds(new Set(filteredLeads.map(lead => lead.id)))}>Select all {filteredLeads.length} filtered leads</button></div>
+        {user?.role === "b2b_head" && <div className="w-full text-xs text-slate-600">The header checkbox selects this page. Selections carry across pages. <button className="underline px-2 py-1" disabled={!filteredLeads.length} onClick={() => setSelectedIds(new Set(filteredLeads.map(lead => lead.id)))}>Select all {filteredLeads.length} filtered leads</button></div>}
       </nav>
 
       {/* Leads Table */}
@@ -621,7 +653,7 @@ export function LeadsTable() {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200">
               <tr>
-                <th className="px-4 py-3 w-10">
+                {user?.role === "b2b_head" && <th className="px-4 py-3 w-10">
                   <button
                     aria-label="Select all leads on this page"
                     onClick={toggleSelectAll}
@@ -633,11 +665,12 @@ export function LeadsTable() {
                       <Square className="w-4 h-4" />
                     )}
                   </button>
-                </th>
+                </th>}
                 <th className="px-4 py-3">Company & Category</th>
                 <th className="px-4 py-3">Contact</th>
                 <th className="px-4 py-3">Location & PIN</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Workflow</th>
                 <th className="px-4 py-3">Store Assignment</th>
                 <th className="px-4 py-3">Ground Rep</th>
                 <th className="px-4 py-3 text-right">Actions</th>
@@ -646,7 +679,8 @@ export function LeadsTable() {
             <tbody className="divide-y divide-slate-100 text-slate-700">
               {pageLeads.map((lead) => {
                 const isSelected = selectedIds.has(lead.id);
-                const config = STATUS_CONFIG[lead.status] || STATUS_CONFIG.New;
+                const displayedStatus = lead.funnel_status || lead.status;
+                const config = FUNNEL_STATUS_CONFIG[displayedStatus as keyof typeof FUNNEL_STATUS_CONFIG] || FUNNEL_STATUS_CONFIG.New;
 
                 return (
                   <tr
@@ -656,7 +690,7 @@ export function LeadsTable() {
                       isSelected ? "bg-orange-50/50" : ""
                     }`}
                   >
-                    <td className="px-4 py-3">
+                    {user?.role === "b2b_head" && <td className="px-4 py-3">
                       <button
                         onClick={() => toggleSelectLead(lead.id)}
                         className="text-slate-400 hover:text-slate-900 cursor-pointer"
@@ -667,7 +701,7 @@ export function LeadsTable() {
                           <Square className="w-4 h-4" />
                         )}
                       </button>
-                    </td>
+                    </td>}
 
                     {/* Company & Category */}
                     <td className="px-4 py-3">
@@ -733,8 +767,18 @@ export function LeadsTable() {
                       <span
                         className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${config.bg} ${config.text} ${config.border}`}
                       >
-                        {config.icon} {lead.status}
+                        {config.icon} {displayedStatus}
                       </span>
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {lead.intake_team === "caller" ? (
+                        <div><span className="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700">Calling Queue</span><p className="mt-1 text-[11px] text-slate-500">{lead.calling_associate?.name || "Caller pending"}</p></div>
+                      ) : lead.intake_team === "ground" ? (
+                        <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">Ground routing</span>
+                      ) : (
+                        <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-700">{lead.intake_team || "Unclassified"}</span>
+                      )}
                     </td>
 
                     {/* Store Assignment */}
@@ -755,13 +799,13 @@ export function LeadsTable() {
                                 : "Suggested:"}{" "}
                               {lead.nearestStoreSuggestion.store.name}
                             </span>
-                            <button
+                            {user?.role === "b2b_head" && <button
                               onClick={() => handleSingleAutoAssign(lead.id)}
                               className="px-2 py-0.5 bg-[#ff4500] hover:bg-[#e03e00] text-white rounded text-[10px] font-bold shadow-2xs cursor-pointer"
                               title="Assign to this store"
                             >
                               Assign
-                            </button>
+                            </button>}
                           </div>
                           <span className="text-[10px] text-slate-400 block font-mono">
                             {lead.nearestStoreSuggestion.approximate

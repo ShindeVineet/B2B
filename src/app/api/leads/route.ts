@@ -166,6 +166,9 @@ export async function GET(req: NextRequest) {
               phone: true,
             },
           },
+          calling_associate: {
+            select: { id: true, name: true, email: true },
+          },
         },
         // Imported batches share a timestamp; the unique tie-breaker prevents
         // overlapping pages as PostgreSQL changes its scan order.

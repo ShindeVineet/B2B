@@ -29,7 +29,8 @@ export async function visiblePartners(u: AuthUser) {
       (p) =>
         ["b2b_head", "regional_manager"].includes(u.role) ||
         p.submitted_by === u.id ||
-        (u.role === "ground_rep" && p.partner_status === "active"),
+        (["ground_rep", "store_associate"].includes(u.role) &&
+          p.partner_status === "active"),
     );
 }
 export async function requirePartner(u: AuthUser, id: string) {

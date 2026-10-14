@@ -48,6 +48,11 @@ export function canUserManageLeads(user: AuthUser | null): boolean {
   return user.role === Role.super_admin || user.role === Role.b2b_head || user.role === Role.regional_manager;
 }
 
+/** Lead ownership/store/rep assignments are controlled only by the B2B Head. */
+export function canAssignLeads(user: AuthUser | null): boolean {
+  return !!user && user.role === Role.b2b_head;
+}
+
 /**
  * Can user manage stores
  */
