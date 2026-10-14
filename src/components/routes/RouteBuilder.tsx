@@ -18,6 +18,7 @@ type Lead = ClusterLead & {
   lead_code: string;
   pin_code: string | null;
   lead_source?: string | null;
+  assigned_ground_rep_id?: string | null;
 };
 type SavedRoute = {
   id: string;
@@ -92,6 +93,7 @@ export function RouteBuilder() {
   } | null>(null);
   const [areaMessage, setAreaMessage] = useState("");
   const [generationError, setGenerationError] = useState("");
+  const [showAssignedOnMap, setShowAssignedOnMap] = useState(false);
   const [remainderLeads, setRemainderLeads] = useState<Lead[]>([]);
   const [preview, setPreview] = useState<Preview | null>(null),
     [previewIndex, setPreviewIndex] = useState(0),
@@ -120,6 +122,9 @@ export function RouteBuilder() {
       ) ===
       (poolGroup === "assigned"),
   );
+  const mapPool = pool.filter(
+    (lead) => showAssignedOnMap || !lead.assigned_ground_rep_id,
+  );
   const current = routes.find((r) => r.id === active);
   async function refresh() {
     const d = await api("/api/route-plans");
@@ -127,6 +132,7 @@ export function RouteBuilder() {
   }
   async function loadPool() {
     setAreaMessage("");
+    setShowAssignedOnMap(false);
     const params = new URLSearchParams({ pool: "true", store, region });
     for (const pincode of pins) params.append("pincode", pincode);
     const d = await api("/api/route-plans?" + params);
@@ -595,9 +601,36 @@ export function RouteBuilder() {
           {pool.length > 0 && (
             <details>
               <summary>Select leads on the map</summary>
-              <p className="py-3 text-sm font-semibold" role="status">
-                {selection.size} of {pool.length} eligible leads selected
-              </p>
+              <div className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <p className="text-sm font-semibold" role="status">
+                  {selection.size} leads selected · {mapPool.length} eligible leads shown
+                </p>
+                <label className="flex items-center gap-2 text-sm font-semibold">
+                  <input
+                    type="checkbox"
+                    checked={showAssignedOnMap}
+                    onChange={(event) => {
+                      const show = event.target.checked;
+                      setShowAssignedOnMap(show);
+                      setAreaMessage(
+                        show
+                          ? "Assigned eligible leads are now visible and can be included by rectangle selection."
+                          : "Showing only eligible leads that are not assigned to anyone.",
+                      );
+                      if (!show)
+                        setSelection((current) =>
+                          new Set(
+                            [...current].filter(
+                              (id) => !pool.find((lead) => lead.id === id)?.assigned_ground_rep_id,
+                            ),
+                          ),
+                        );
+                      setPreview(null);
+                    }}
+                  />
+                  Show assigned leads
+                </label>
+              </div>
               {areaMessage && (
                 <p
                   role={selection.size ? "status" : "alert"}
@@ -607,12 +640,12 @@ export function RouteBuilder() {
                 </p>
               )}
               <Map
-                points={pool}
-                statuses={pool.map(() => "pending")}
-                labels={pool.map((l) => l.company_name)}
+                points={mapPool}
+                statuses={mapPool.map(() => "pending")}
+                labels={mapPool.map((l) => l.company_name)}
                 onAreaSelect={(area) => {
                   setBounds(area);
-                  const selected = pool.filter(
+                  const selected = mapPool.filter(
                     (p) =>
                       p.lat >= area.south &&
                       p.lat <= area.north &&
@@ -622,8 +655,8 @@ export function RouteBuilder() {
                   setSelection(new Set(selected.map((p) => p.id)));
                   setAreaMessage(
                     selected.length
-                      ? `${selected.length} eligible lead${selected.length === 1 ? "" : "s"} selected inside the rectangle.`
-                      : "No eligible leads were found inside that rectangle. Draw a larger area or select leads from the list below.",
+                      ? `${selected.length} ${showAssignedOnMap ? "eligible" : "unassigned eligible"} lead${selected.length === 1 ? "" : "s"} selected inside the rectangle.`
+                      : `No ${showAssignedOnMap ? "eligible" : "unassigned eligible"} leads were found inside that rectangle. Draw a larger area or select leads from the list below.`,
                   );
                   setPreview(null);
                 }}
