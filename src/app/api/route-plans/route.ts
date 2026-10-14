@@ -155,7 +155,6 @@ export async function POST(req: NextRequest) {
           b.leads_per_route,
           b.single ? 1 : b.route_count,
         );
-        if (b.single) batch.remainder = [];
         if (!b.preview && b.expected_routes) {
           if (
             !Array.isArray(b.expected_routes) ||
@@ -183,12 +182,10 @@ export async function POST(req: NextRequest) {
               409,
             );
           const chosen = new Set(points.map((p) => p.id));
-          const remainder = b.single
-            ? []
-            : pool
-                .filter((p) => !chosen.has(p.id))
-                .map((p) => p.id)
-                .sort();
+          const remainder = pool
+            .filter((p) => !chosen.has(p.id))
+            .map((p) => p.id)
+            .sort();
           if (
             !Array.isArray(b.expected_remainder) ||
             JSON.stringify([...b.expected_remainder].sort()) !==
@@ -221,7 +218,7 @@ export async function POST(req: NextRequest) {
               target_count: b.leads_per_route,
               created_by: user.id,
               batch_id: batchId,
-              remainder_lead_ids: i === 0 ? batch.remainder : [],
+              remainder_lead_ids: i === 0 && !b.single ? batch.remainder : [],
               leads: {
                 create: stops.map((p, j) => ({
                   lead_id: p.id,

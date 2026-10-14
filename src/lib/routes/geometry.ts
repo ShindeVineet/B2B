@@ -1,10 +1,14 @@
 import {
-  clusterLeadsIntoDays,
+  clusterSpan,
+  nearestLeads,
   orderDay,
   routeDistance,
   type ClusterLead,
 } from "../clustering/cluster-leads";
+import { createSpatialLookup } from "../clustering/spatial-lookup";
 import { distanceKm, type Coordinates } from "../location";
+const stable = (a: ClusterLead, b: ClusterLead) =>
+  b.lat - a.lat || a.lng - b.lng || a.id.localeCompare(b.id);
 export function cheapestInsertion<T extends ClusterLead>(stops: T[], lead: T) {
   let best = [...stops, lead],
     distance = routeDistance(best);
@@ -93,11 +97,41 @@ export function buildRouteBatch(
   const k = requestedK ?? Math.floor(pool.length / n);
   if (!Number.isInteger(k) || k < 0 || k > 1000 || k * n > pool.length)
     throw new RangeError("Route count exceeds the available complete batches");
-  const grouped = clusterLeadsIntoDays(pool, Array(k).fill(n), null);
-  const byId = new Map(pool.map((p) => [p.id, p]));
-  const initial = grouped.days.map((d) =>
-    d.lead_ids.map((id) => byId.get(id)!),
-  );
+  const lookup = pool.length >= 300 ? createSpatialLookup(pool) : nearestLeads;
+  let remaining = [...pool];
+  const initial: ClusterLead[][] = [];
+  for (let routeIndex = 0; routeIndex < k; routeIndex++) {
+    // Evaluate seeds distributed across the full selected pool. This avoids an
+    // arbitrary edge lead deciding the route and chooses the most compact
+    // complete batch before optimizing its stop order.
+    const orderedSeeds = [...remaining].sort(stable);
+    const sampleSize = Math.min(64, orderedSeeds.length);
+    const seeds = Array.from({ length: sampleSize }, (_, index) =>
+      orderedSeeds[Math.floor((index * orderedSeeds.length) / sampleSize)],
+    );
+    let best: ClusterLead[] | null = null;
+    let bestDistance = Infinity;
+    let bestSpan = Infinity;
+    for (const seed of seeds) {
+      const group = lookup(seed, remaining, n);
+      if (group.length !== n) continue;
+      const route = orderDay(group, null, 2, lookup);
+      const distance = routeDistance(route);
+      const span = clusterSpan(group);
+      if (
+        distance < bestDistance - 1e-9 ||
+        (Math.abs(distance - bestDistance) <= 1e-9 && span < bestSpan)
+      ) {
+        best = route;
+        bestDistance = distance;
+        bestSpan = span;
+      }
+    }
+    if (!best) break;
+    initial.push(best);
+    const used = new Set(best.map((point) => point.id));
+    remaining = remaining.filter((point) => !used.has(point.id));
+  }
   const result =
     refine && k >= 10
       ? refineRoutes(initial)
@@ -107,7 +141,7 @@ export function buildRouteBatch(
           after: initial.reduce((s, r) => s + routeDistance(r), 0),
           improvement_percent: 0,
         };
-  return { ...result, remainder: grouped.unscheduled_lead_ids };
+  return { ...result, remainder: remaining.map((point) => point.id).sort() };
 }
 export function routeLegs(points: Coordinates[]) {
   return points.slice(1).map((point, i) => ({

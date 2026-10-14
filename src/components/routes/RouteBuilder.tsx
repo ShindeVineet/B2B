@@ -689,8 +689,9 @@ export function RouteBuilder() {
             <div className="space-y-3">
               <p>
                 {preview.routes.length} routes · {preview.remainder.length}{" "}
-                remainder leads. Remainders stay unassigned until you explicitly
-                place or defer them.
+                selected-pool leads outside this preview. The shortest compact
+                complete {preview.routes.length === 1 ? "route was" : "routes were"}{" "}
+                chosen from the full selection.
               </p>
               {preview.improvement_percent >= 1 && (
                 <p>

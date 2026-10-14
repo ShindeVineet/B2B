@@ -35,6 +35,23 @@ test("explicit K leaves all overflow unassigned", () => {
   assert.equal(buildRouteBatch(pool(51), 10, 3).remainder.length, 21);
   assert.throws(() => buildRouteBatch(pool(9), 10, 1));
 });
+test("single route chooses the shortest compact batch from the full pool", () => {
+  const dense = Array.from({ length: 4 }, (_, i) => ({
+    id: `dense-${i}`,
+    lat: 12.97 + i * 0.0001,
+    lng: 77.59 + i * 0.0001,
+  }));
+  const sparse = [
+    { id: "north", lat: 28.61, lng: 77.2 },
+    { id: "west", lat: 19.07, lng: 72.87 },
+  ];
+  const result = buildRouteBatch([...sparse, ...dense], 4, 1, false);
+  assert.deepEqual(
+    new Set(result.routes[0].map((point) => point.id)),
+    new Set(dense.map((point) => point.id)),
+  );
+  assert.deepEqual(result.remainder, ["north", "west"]);
+});
 test("boundary swaps lower distance without losing or duplicating stops", () => {
   const groups = Array.from({ length: 10 }, (_, g) =>
     Array.from({ length: 5 }, (_, i) => ({
