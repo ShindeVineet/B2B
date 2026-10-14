@@ -90,6 +90,7 @@ export function RouteBuilder() {
     west: number;
     east: number;
   } | null>(null);
+  const [areaMessage, setAreaMessage] = useState("");
   const [remainderLeads, setRemainderLeads] = useState<Lead[]>([]);
   const [preview, setPreview] = useState<Preview | null>(null),
     [previewIndex, setPreviewIndex] = useState(0),
@@ -124,6 +125,7 @@ export function RouteBuilder() {
     setRoutes(d.routes);
   }
   async function loadPool() {
+    setAreaMessage("");
     const params = new URLSearchParams({ pool: "true", store, region });
     for (const pincode of pins) params.append("pincode", pincode);
     const d = await api("/api/route-plans?" + params);
@@ -568,24 +570,35 @@ export function RouteBuilder() {
           {pool.length > 0 && (
             <details>
               <summary>Select leads on the map</summary>
+              <p className="py-3 text-sm font-semibold" role="status">
+                {selection.size} of {pool.length} eligible leads selected
+              </p>
+              {areaMessage && (
+                <p
+                  role={selection.size ? "status" : "alert"}
+                  className={`mb-3 rounded-lg border p-3 text-sm ${selection.size ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-300 bg-amber-50 text-amber-900"}`}
+                >
+                  {areaMessage}
+                </p>
+              )}
               <Map
                 points={pool}
                 statuses={pool.map(() => "pending")}
                 labels={pool.map((l) => l.company_name)}
                 onAreaSelect={(area) => {
                   setBounds(area);
-                  setSelection(
-                    new Set(
-                      pool
-                        .filter(
-                          (p) =>
-                            p.lat >= area.south &&
-                            p.lat <= area.north &&
-                            p.lng >= area.west &&
-                            p.lng <= area.east,
-                        )
-                        .map((p) => p.id),
-                    ),
+                  const selected = pool.filter(
+                    (p) =>
+                      p.lat >= area.south &&
+                      p.lat <= area.north &&
+                      p.lng >= area.west &&
+                      p.lng <= area.east,
+                  );
+                  setSelection(new Set(selected.map((p) => p.id)));
+                  setAreaMessage(
+                    selected.length
+                      ? `${selected.length} eligible lead${selected.length === 1 ? "" : "s"} selected inside the rectangle.`
+                      : "No eligible leads were found inside that rectangle. Draw a larger area or select leads from the list below.",
                   );
                   setPreview(null);
                 }}

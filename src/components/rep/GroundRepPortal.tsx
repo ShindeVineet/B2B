@@ -16,7 +16,8 @@ import { StoreVisits } from "@/components/dashboard/StoreVisits";
 import { fetchAllMapLeads } from "@/lib/map-leads";
 import { latestByLead } from "@/lib/dashboard/metrics";
 import { todayIndia } from "@/lib/phase5/calendar";
-type Lead = CardLead & { lat?: number | null; lng?: number | null; consultation_read_only?: boolean; consultation_visit_id?: string | null; trip_lead_id?: string; latest_consultation_outcome?: string | null };
+import { fullRouteLink, routeLinks } from "@/lib/route-links";
+type Lead = CardLead & { lat?: number | null; lng?: number | null; store?: { lat?: number | null; lng?: number | null } | null; consultation_read_only?: boolean; consultation_visit_id?: string | null; trip_lead_id?: string; latest_consultation_outcome?: string | null };
 type Stop = { id: string; lead: Lead; completed: boolean; status: string; consultation?: unknown };
 export function GroundRepPortal({ memberId }: { memberId: string }) {
   const [tab,setTab]=useState("My Visits"),[date,setDate]=useState(todayIndia()),[leads,setLeads]=useState<Lead[]>([]),[stops,setStops]=useState<Stop[]>([]),[records,setRecords]=useState<ConsultationRow[]>([]),[error,setError]=useState(""),[loading,setLoading]=useState(true),[search,setSearch]=useState(""),[page,setPage]=useState(1),[consulting,setConsulting]=useState<Lead|null>(null);
@@ -36,6 +37,14 @@ export function GroundRepPortal({ memberId }: { memberId: string }) {
   const invalidate = useCallback(() => { request.current++; }, []);
   useEffect(()=>{const timer=setTimeout(()=>void load(),0);return()=>{clearTimeout(timer);invalidate();};},[load,invalidate]);
   const latest=latestByLead(records.map(c=>({...c,lead_id:c.lead.id})));
+  let dayRouteLinks: string[] = [], dayRouteError = "";
+  try {
+    const origin = stops.find((stop) => stop.lead.store?.lat != null && stop.lead.store?.lng != null)?.lead.store;
+    dayRouteLinks = stops.length ? routeLinks(stops.map((stop) => stop.lead), origin || undefined) : [];
+  } catch (e) {
+    dayRouteError = e instanceof Error ? e.message : "Unable to create the Google Maps route.";
+  }
+  const completeDayRoute = fullRouteLink(dayRouteLinks);
   const categories = ["Hot Leads", "Warm Leads", "Cold Leads", "Won"];
   const shown = leads.filter(l => (!categories.includes(tab) || interestBucket(l) === tab) && `${l.company_name} ${l.lead_code} ${l.phone_no} ${l.address}`.toLowerCase().includes(search.toLowerCase()));
   const actions=(lead:Lead,stop?:Stop)=><>{lead.lat != null && lead.lng != null && <LeadNavigate lead={lead} />}{!isWonLead(lead) && ((stop ? !!stop.consultation || stop.completed : lead.consultation_read_only || lead.latest_consultation_outcome) ? <LogRevisit leadId={lead.id} onSaved={()=>void load()} /> : (!stop || ["pending","rescheduled"].includes(stop.status)) && <button className="bg-[#ff4500] text-white rounded-lg px-3 py-2 text-xs" onClick={()=>setConsulting({...lead,trip_lead_id:stop?.id || lead.consultation_visit_id || undefined})}>Log consultation</button>)}{stop && !stop.completed && !stop.consultation && <RescheduleVisit id={stop.id} onSaved={()=>void load()} />}</>;
@@ -65,6 +74,9 @@ export function GroundRepPortal({ memberId }: { memberId: string }) {
       {error&&<p role="alert" className="text-red-700">{error}</p>}
       {loading?<p role="status">Loading visits…</p>:tab==="Onboarding"?<RepOnboarding leads={leads}/>:tab==="Visits Today"?<StoreVisits today/>:tab==="My Visits"?<>
         <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">Scheduled visits · {date} · {stops.length}</h2>
+        {dayRouteError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">Google Maps route unavailable: {dayRouteError}</p>}
+        {completeDayRoute && <a href={completeDayRoute} target="_blank" rel="noreferrer" className="inline-flex rounded-xl bg-[#ff4500] px-4 py-2 text-xs font-bold text-white">Open complete route in Google Maps</a>}
+        {!completeDayRoute && dayRouteLinks.length > 0 && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3"><p className="mb-2 text-xs text-amber-900">Google Maps limits the number of stops in one mobile route. Open these connected parts in order; every scheduled stop is included.</p><div className="flex flex-wrap gap-2">{dayRouteLinks.map((href,index)=><a key={href} href={href} target="_blank" rel="noreferrer" className="rounded-lg bg-[#ff4500] px-3 py-2 text-xs font-bold text-white">Open route part {index+1} of {dayRouteLinks.length}</a>)}</div></div>}
         <div className="space-y-3">{stops.map((stop,index)=>visitRow({...stop.lead,...leads.find(l=>l.id===stop.lead.id)},index,stop))}</div>
         {!stops.length&&<div className="bg-white rounded-3xl border border-slate-200 p-8 text-center"><p className="text-sm font-bold">No visits scheduled for this date</p><button onClick={()=>setTab("Assigned")} className="mt-3 px-4 py-2 bg-[#ff4500] text-white text-xs font-bold rounded-xl">View assigned leads</button></div>}
       </>:tab==="Consultations"?<><p className="text-xs text-slate-500">{latest.length} consulted leads · {records.length} consultation records preserved in history.</p><div className="space-y-3">{latest.slice((page-1)*24,page*24).map(c=><ConsultationCard key={c.id} row={c} onSaved={()=>void load()}/>)}</div></>:<>

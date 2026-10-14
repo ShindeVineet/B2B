@@ -121,6 +121,7 @@ export default function SnapshotMap({
         <div className="flex flex-wrap gap-3 items-center">
           <button
             type="button"
+            disabled={!points.some(inIndia)}
             aria-pressed={selecting}
             onClick={() => {
               setSelecting(!selecting);
@@ -134,7 +135,7 @@ export default function SnapshotMap({
             {selecting ? "Stop selecting" : "Select rectangle"}
           </button>
           <span role="status" className="text-sm text-slate-600">
-            {hint || "Use Select rectangle, then click or tap two corners."}
+            {hint || (points.some(inIndia) ? "Use Select rectangle, then click or tap two corners." : "No mapped eligible leads are available for rectangle selection.")}
           </span>
         </div>
       )}
