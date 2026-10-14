@@ -1,4 +1,5 @@
 "use client";
+import { CallingConsultationModal } from "@/components/consultations/CallingConsultationModal";
 import { OriginalLead } from "@/components/leads/OriginalLead";
 import { StoreVisitFields } from "@/components/consultations/StoreVisitFields";
 import { DialogOverlay } from "@/components/shared/DialogOverlay";
@@ -16,17 +17,23 @@ type Lead = {
   company_name: string;
   phone_no?: string | null;
 };
-export function ConsultationModal({
+export function ConsultationModal(props: Parameters<typeof ConsultationForm>[0]) {
+  return props.isOpen ? <ConsultationForm key={`${props.lead.id}:${props.lead.trip_lead_id || ""}:${props.context || ""}`} {...props} /> : null;
+}
+function ConsultationForm({
   lead,
   isOpen,
   onClose,
   onSuccess,
+  context,
 }: {
   lead: Lead;
+  context?: "ground";
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
 }) {
+  const [mode, setMode] = useState("ground");
   const [visitId, setVisitId] = useState<string | null>(null);
   const [verifiedFor, setVerifiedFor] = useState("");
   const visitKey = `${lead.id}:${lead.trip_lead_id || ""}`;
@@ -45,6 +52,7 @@ export function ConsultationModal({
       "/api/consultations/open?" +
         new URLSearchParams({
           lead_id: lead.id,
+          ...(context ? { context } : {}),
           ...(lead.trip_lead_id ? { trip_lead_id: lead.trip_lead_id } : {}),
         }),
     )
@@ -52,12 +60,15 @@ export function ConsultationModal({
         const d = await r.json();
         if (!r.ok) throw Error(d.error);
         if (active) {
+          setMode(d.mode || "ground");
           setVisitId(d.trip_lead_id);
           setVerifiedFor(visitKey);
         }
+        if (d.mode === "calling") return null;
         return fetch("/api/form-fields");
       })
       .then(async (r) => {
+        if (!r) return;
         const d = await r.json();
         if (!r.ok) throw Error(d.error);
         if (active) {
@@ -85,8 +96,10 @@ export function ConsultationModal({
     lead.phone_no,
     lead.trip_lead_id,
     visitKey,
+    context,
   ]);
   if (!isOpen) return null;
+  if (mode === "calling" && allowed) return <CallingConsultationModal key={lead.id} leadId={lead.id} onClose={onClose} onSuccess={onSuccess} />;
   const set = (key: string, value: string | string[]) =>
     setValues((v) => ({ ...v, [key]: value }));
   async function upload(field: FieldDefinition, files: FileList | null) {

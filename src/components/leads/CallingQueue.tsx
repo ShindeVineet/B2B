@@ -1,4 +1,5 @@
 "use client";
+import { GroupCreatedToggle } from "./GroupCreatedToggle";
 import { isWonLead } from "@/lib/leads/interest-bucket";
 import { ScheduleVisitButton } from "@/components/leads/ScheduleVisitButton";
 import { OriginalLead } from "@/components/leads/OriginalLead";
@@ -31,6 +32,7 @@ type Lead = {
   pin_code: string | null;
   phone_no: string | null;
   lead_source: string | null;
+  intake_team?: string | null;
   latest_interest_level: string | null;
 };
 export function CallingQueue() {
@@ -86,6 +88,7 @@ export function CallingQueue() {
     tab === "All"
       ? l.latest_interest_level === "Medium" ||
         l.latest_interest_level === "Low" ||
+        l.intake_team === "caller" ||
         l.lead_source === "Phone" ||
         l.lead_source === "CDT" ||
         l.lead_source === "LinkedIn" ||
@@ -115,8 +118,7 @@ export function CallingQueue() {
       />
       <p className="rounded-xl border border-orange-100 bg-orange-50 p-3 text-sm text-orange-900">
         Call priority: due follow-ups → no recorded contact → oldest contact.
-        Future follow-ups come last. Use Log a call after speaking on the office
-        phone.
+        Future follow-ups come last. Use Log a call to record whether the call was picked.
       </p>
       <div className="flex flex-wrap gap-3">
         {["All", "Location", "Warm", "Cold", "Phone", "CDT", "LinkedIn", "Walk-in"].map(
@@ -231,6 +233,9 @@ export function CallingQueue() {
                 {l.lead_code} {l.company_name}
               </Link>
               <p>{l.phone_no || "Phone not provided"}</p>
+              <p className="text-xs text-slate-500">
+                Source: {l.lead_source || "Not recorded"}
+              </p>
               {l.store_visits?.[0] && <p className="text-xs text-orange-800 mt-2">Visit date: {new Date(l.store_visits[0].scheduled_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST · {l.store_visits[0].store.name}</p>}
               <p>{l.address || "Location details pending"}</p>
               {l.linkedin_data && (
@@ -248,6 +253,7 @@ export function CallingQueue() {
               )}
             </div>
             <div className="flex flex-wrap gap-2">
+              <GroupCreatedToggle leadId={l.id} />
               <ScheduleVisitButton leadId={l.id} />
               <LeadCall
                 showHistory

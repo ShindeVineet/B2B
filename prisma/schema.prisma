@@ -39,6 +39,7 @@ model User {
 
   id            String   @id @default(cuid())
   name          String
+  designation   String?
   phone         String?
   email         String   @unique
   role          Role     @default(ground_rep)

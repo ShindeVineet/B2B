@@ -12,9 +12,9 @@ export function StoreVisits({ today = false, receiving = false }: { today?: bool
     const refresh = async () => {
       try { const r = await fetch(`/api/store-visits?today=${today}&receiving=${receiving}`); const d = await r.json(); if (!r.ok) throw Error(d.error); if (active) { setVisits(d.visits); setError(""); } } catch (e) { if (active) setError((e as Error).message); }
     };
-    void refresh(); const timer = setInterval(refresh, 60000);
+    void refresh();
     window.addEventListener("store-visits-updated", refresh);
-    return () => { active = false; clearInterval(timer); window.removeEventListener("store-visits-updated", refresh); };
+    return () => { active = false; window.removeEventListener("store-visits-updated", refresh); };
   }, [today, receiving]);
   const manage = ["b2b_head", "regional_manager", "store_associate"].includes(user?.role || "");
   return <section className="store-visit-board" aria-label="Scheduled store visits"><details open={today}>

@@ -90,10 +90,8 @@ export function Phase5Panels({ role }: { role: string }) {
       }
     }
     void load();
-    const timer = setInterval(load, 30000);
     return () => {
       active = false;
-      clearInterval(timer);
     };
   }, [manage, risk, filters]);
   const groups = Object.groupBy(

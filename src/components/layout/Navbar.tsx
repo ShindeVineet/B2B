@@ -20,19 +20,26 @@ import {
   ChevronDown,
   Briefcase,
   ShieldCheck,
+  RefreshCw,
+  Trash2,
 } from "lucide-react";
 
 export function Navbar() {
   const { user, logout, quickLogin } = useAuth();
   const pathname = usePathname();
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [clearingCache, setClearingCache] = useState(false);
 
   const isSuperAdmin = user?.role === "super_admin";
 
   const [counts, setCounts] = useState<Record<string, number>>({});
   useEffect(() => {
     if (!user || user.role === "ground_rep") return;
-    const refresh = () =>
+    const refresh = () => {
+      if (document.visibilityState === "hidden") return Promise.resolve();
+      return (
       Promise.all(
         ["/mapping-issues", "/cold-leads"].map(async (path) => {
           const response = await fetch(`/api${path}?count=true`);
@@ -40,11 +47,18 @@ export function Navbar() {
         }),
       )
         .then((rows) => setCounts(Object.fromEntries(rows)))
-        .catch(() => {});
+        .catch(() => {})
+      );
+    };
     void refresh();
-    const timer = setInterval(refresh, 30000);
-    return () => clearInterval(timer);
   }, [user]);
+  useEffect(() => {
+    const saved = Number(localStorage.getItem("workspace-last-refreshed"));
+    const value = Number.isFinite(saved) && saved > 0 ? saved : Date.now();
+    localStorage.setItem("workspace-last-refreshed", String(value));
+    const timer = window.setTimeout(() => setLastRefreshed(value), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
   if (!user) return null;
 
   const role = user.role;
@@ -179,6 +193,8 @@ export function Navbar() {
   const moreNav = filteredNav.filter(
     (item) => !primaryPaths.includes(item.href),
   );
+  const shouldPrefetch = (href: string) =>
+    !["/map", "/route-planner"].includes(href);
 
   const roleLabels: Record<string, string> = {
     super_admin: "Super Admin",
@@ -193,6 +209,26 @@ export function Navbar() {
     setRoleMenuOpen(false);
     await quickLogin(email);
     window.location.reload();
+  };
+  const refreshAllData = async () => {
+    setRefreshing(true);
+    const value = Date.now();
+    localStorage.setItem("workspace-last-refreshed", String(value));
+    window.location.reload();
+  };
+  const clearCache = async () => {
+    setClearingCache(true);
+    if ("caches" in window) {
+      const keys = await window.caches.keys();
+      await Promise.all(keys.map((key) => window.caches.delete(key)));
+    }
+    sessionStorage.clear();
+    const value = Date.now();
+    localStorage.setItem("workspace-last-refreshed", String(value));
+    localStorage.setItem("workspace-cache-cleared-at", String(value));
+    const url = new URL(window.location.href);
+    url.searchParams.set("fresh", String(value));
+    window.location.replace(url.toString());
   };
 
   return (
@@ -219,6 +255,7 @@ export function Navbar() {
                   <Link
                     key={item.name}
                     href={item.href}
+                    prefetch={shouldPrefetch(item.href)}
                     className={`flex shrink-0 whitespace-nowrap items-center gap-1.5 px-2 py-2 rounded-lg text-xs font-semibold transition-all ${
                       isActive
                         ? "bg-[#ff4500]/10 text-[#ff4500] border border-[#ff4500]/30 shadow-xs"
@@ -243,6 +280,7 @@ export function Navbar() {
                       <Link
                         key={item.href}
                         href={item.href}
+                        prefetch={shouldPrefetch(item.href)}
                         aria-current={
                           pathname === item.href ? "page" : undefined
                         }
@@ -265,6 +303,33 @@ export function Navbar() {
 
           {/* Right Controls */}
           <div className="flex items-center gap-3">
+            <div className="hidden sm:flex flex-col items-end">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={refreshing || clearingCache}
+                  onClick={() => void refreshAllData()}
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  title="Reload current workspace data"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                  {refreshing ? "Refreshing…" : "Refresh all data"}
+                </button>
+                <button
+                  type="button"
+                  disabled={refreshing || clearingCache}
+                  onClick={() => void clearCache()}
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  title="Clear application caches and reload without signing out"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {clearingCache ? "Clearing…" : "Clear cache"}
+                </button>
+              </div>
+              <span className="mt-0.5 text-[10px] text-slate-500">
+                Last refreshed {lastRefreshed ? new Date(lastRefreshed).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" }) : "—"}
+              </span>
+            </div>
             {/* Persona Switcher — Super Admin ONLY */}
             {isSuperAdmin && (
               <div className="relative">
@@ -334,10 +399,29 @@ export function Navbar() {
               <details>
                 <summary className="cursor-pointer p-2 text-xs">Menu</summary>
                 <div className="absolute right-0 top-10 z-[80] bg-white border rounded-xl shadow-lg p-2 w-56 max-h-[70vh] overflow-auto">
+                  <button
+                    type="button"
+                    disabled={refreshing || clearingCache}
+                    onClick={() => void refreshAllData()}
+                    className="mb-2 flex w-full items-center gap-2 rounded-lg border p-3 text-left text-sm font-semibold"
+                  >
+                    <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+                    <span>{refreshing ? "Refreshing…" : "Refresh all data"}<small className="block font-normal text-slate-500">Last refreshed {lastRefreshed ? new Date(lastRefreshed).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" }) : "—"}</small></span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={refreshing || clearingCache}
+                    onClick={() => void clearCache()}
+                    className="mb-2 flex w-full items-center gap-2 rounded-lg border p-3 text-left text-sm font-semibold"
+                  >
+                    <Trash2 size={16} />
+                    {clearingCache ? "Clearing cache…" : "Clear cache and reload"}
+                  </button>
                   {filteredNav.map((item) => (
                     <Link
                       key={item.href}
                       href={item.href}
+                      prefetch={shouldPrefetch(item.href)}
                       className={`flex items-center gap-2 rounded-lg p-3 text-sm ${pathname === item.href ? "bg-orange-50 text-orange-700 font-semibold" : "text-slate-700 hover:bg-slate-50"}`}
                       onClick={(e) =>
                         e.currentTarget

@@ -65,7 +65,9 @@ export async function leadEligibility(
     const unresolved = l.trip_leads.some(
       (v) => !closedVisit(v) && !["skipped", "cancelled"].includes(v.status),
     );
-    const reason = l.intake_team !== "ground" && !l.assigned_ground_rep_id
+    const reason = l.intake_team === "caller"
+      ? "In Calling Queue — complete or verify its location before route planning"
+      : l.intake_team !== "ground" && !l.assigned_ground_rep_id
       ? "Owned by the intake team — a manager must assign a ground rep before route planning"
       : !canPlotLead(l)
       ? "Resolve Mapping Issues first"

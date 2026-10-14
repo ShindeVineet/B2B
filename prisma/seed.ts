@@ -90,64 +90,73 @@ async function main() {
 
   const usersData = [
     {
-      email: "admin@leadmap.com",
-      name: "Vineet Shinde (B2B Head)",
+      email: "vineet@adorzy.com",
+      name: "Vineet Shinde",
+      designation: "B2B Head",
       role: Role.b2b_head,
       phone: "+91 98765 43210",
       region: "All",
     },
     {
-      email: "manager.south@leadmap.com",
-      name: "Ananya Iyer (South Manager)",
+      email: "ananya@adorzy.com",
+      name: "Ananya Iyer",
+      designation: "South Manager",
       role: Role.regional_manager,
       phone: "+91 98765 43211",
       region: "South",
     },
     {
-      email: "manager.west@leadmap.com",
-      name: "Kunal Shah (West Manager)",
+      email: "kunal@adorzy.com",
+      name: "Kunal Shah",
+      designation: "West Manager",
       role: Role.regional_manager,
       phone: "+91 98765 43212",
       region: "West",
     },
     {
-      email: "manager.north@leadmap.com",
-      name: "Sanjay Sharma (North Manager)",
+      email: "sanjay@adorzy.com",
+      name: "Sanjay Sharma",
+      designation: "North Manager",
       role: Role.regional_manager,
       phone: "+91 98765 43213",
       region: "North",
     },
     {
-      email: "rep.rajesh@leadmap.com",
-      name: "Shinoy (South Rep)",
+      email: "shinoy@adorzy.com",
+      name: "Shinoy",
+      designation: "South Rep",
       role: Role.ground_rep,
       phone: "+91 98765 43220",
       region: "South",
     },
     {
-      email: "rep.priya@leadmap.com",
-      name: "Priya Nair (South Rep)",
+      email: "priya@adorzy.com",
+      name: "Priya Nair",
+      designation: "South Rep",
       role: Role.ground_rep,
       phone: "+91 98765 43221",
       region: "South",
     },
     {
-      email: "rep.amit@leadmap.com",
-      name: "Amit Patel (West Rep)",
+      email: "amit@adorzy.com",
+      name: "Amit Patel",
+      designation: "West Rep",
       role: Role.ground_rep,
       phone: "+91 98765 43222",
       region: "West",
     },
     {
-      email: "rep.rohit@leadmap.com",
-      name: "Rohit Verma (North Rep)",
+      email: "rohit@adorzy.com",
+      name: "Rohit Verma",
+      designation: "North Rep",
       role: Role.ground_rep,
       phone: "+91 98765 43223",
       region: "North",
     },
     {
-      email: "analyst@leadmap.com",
-      name: "Neha Sen (Operations Analyst)",
+      email: "neha@adorzy.com",
+      name: "Neha Sen",
+      designation: "Operations Analyst",
       role: Role.analyst,
       phone: "+91 98765 43230",
       region: "All",
@@ -160,6 +169,7 @@ async function main() {
       where: { email: u.email },
       update: {
         name: u.name,
+        designation: u.designation,
         role: u.role,
         region: u.region,
         phone: u.phone,
@@ -168,6 +178,7 @@ async function main() {
       create: {
         email: u.email,
         name: u.name,
+        designation: u.designation,
         role: u.role,
         region: u.region,
         phone: u.phone,
@@ -190,7 +201,7 @@ async function main() {
       lng: 77.6412,
       radius_km: 10,
       region: "South",
-      manager_id: userMap.get("manager.south@leadmap.com")?.id,
+      manager_id: userMap.get("ananya@adorzy.com")?.id,
     },
     {
       name: "Koramangala Experience Hub",
@@ -200,7 +211,7 @@ async function main() {
       lng: 77.6245,
       radius_km: 8,
       region: "South",
-      manager_id: userMap.get("manager.south@leadmap.com")?.id,
+      manager_id: userMap.get("ananya@adorzy.com")?.id,
     },
     {
       name: "Andheri Commercial Hub",
@@ -210,7 +221,7 @@ async function main() {
       lng: 72.8277,
       radius_km: 12,
       region: "West",
-      manager_id: userMap.get("manager.west@leadmap.com")?.id,
+      manager_id: userMap.get("kunal@adorzy.com")?.id,
     },
     {
       name: "Connaught Place Store",
@@ -220,7 +231,7 @@ async function main() {
       lng: 77.2167,
       radius_km: 15,
       region: "North",
-      manager_id: userMap.get("manager.north@leadmap.com")?.id,
+      manager_id: userMap.get("sanjay@adorzy.com")?.id,
     },
     {
       name: "Hitec City Tech Park Store",
@@ -230,7 +241,7 @@ async function main() {
       lng: 78.3742,
       radius_km: 10,
       region: "South",
-      manager_id: userMap.get("manager.south@leadmap.com")?.id,
+      manager_id: userMap.get("ananya@adorzy.com")?.id,
     },
   ];
 
@@ -257,23 +268,23 @@ async function main() {
 
   if (indiranagarStore) {
     await prisma.user.update({
-      where: { email: "rep.rajesh@leadmap.com" },
+      where: { email: "shinoy@adorzy.com" },
       data: { store_id: indiranagarStore.id },
     });
     await prisma.user.update({
-      where: { email: "rep.priya@leadmap.com" },
+      where: { email: "priya@adorzy.com" },
       data: { store_id: indiranagarStore.id },
     });
   }
   if (andheriStore) {
     await prisma.user.update({
-      where: { email: "rep.amit@leadmap.com" },
+      where: { email: "amit@adorzy.com" },
       data: { store_id: andheriStore.id },
     });
   }
   if (cpStore) {
     await prisma.user.update({
-      where: { email: "rep.rohit@leadmap.com" },
+      where: { email: "rohit@adorzy.com" },
       data: { store_id: cpStore.id },
     });
   }
@@ -297,7 +308,7 @@ async function main() {
       website: "https://nextech.example.com",
       reviews_count: 84,
       assigned_store_id: indiranagarStore?.id,
-      assigned_ground_rep_id: userMap.get("rep.rajesh@leadmap.com")?.id,
+      assigned_ground_rep_id: userMap.get("shinoy@adorzy.com")?.id,
       call_outcome: "Interested",
       call_date: new Date(),
       notes: "Looking for 50 enterprise office desks and ergonomic chairs.",
@@ -316,7 +327,7 @@ async function main() {
       website: "https://urbanliving.example.com",
       reviews_count: 142,
       assigned_store_id: indiranagarStore?.id,
-      assigned_ground_rep_id: userMap.get("rep.rajesh@leadmap.com")?.id,
+      assigned_ground_rep_id: userMap.get("shinoy@adorzy.com")?.id,
       call_outcome: "Demo Requested",
       notes:
         "High intent, planning wholesale furniture procurement for luxury apartments.",
@@ -350,7 +361,7 @@ async function main() {
       website: "https://cloudscale.example.com",
       reviews_count: 45,
       assigned_store_id: indiranagarStore?.id,
-      assigned_ground_rep_id: userMap.get("rep.priya@leadmap.com")?.id,
+      assigned_ground_rep_id: userMap.get("priya@adorzy.com")?.id,
       call_outcome: "Won",
       notes: "Contract signed for floor 3 and 4 fitout.",
     },
@@ -368,7 +379,7 @@ async function main() {
       website: "https://apexdiagnostics.example.com",
       reviews_count: 19,
       assigned_store_id: indiranagarStore?.id,
-      assigned_ground_rep_id: userMap.get("rep.priya@leadmap.com")?.id,
+      assigned_ground_rep_id: userMap.get("priya@adorzy.com")?.id,
       call_outcome: "Budget Postponed",
       notes: "Fiscal freeze until next quarter.",
     },
@@ -388,7 +399,7 @@ async function main() {
       website: "https://finpulse.example.com",
       reviews_count: 67,
       assigned_store_id: storeMap.get("Koramangala Experience Hub")?.id,
-      assigned_ground_rep_id: userMap.get("rep.priya@leadmap.com")?.id,
+      assigned_ground_rep_id: userMap.get("priya@adorzy.com")?.id,
       call_outcome: "Site Visit Scheduled",
       notes: "Expanding team from 40 to 120 members.",
     },
@@ -406,7 +417,7 @@ async function main() {
       website: "https://saffronspices.example.com",
       reviews_count: 12,
       assigned_store_id: storeMap.get("Koramangala Experience Hub")?.id,
-      assigned_ground_rep_id: userMap.get("rep.priya@leadmap.com")?.id,
+      assigned_ground_rep_id: userMap.get("priya@adorzy.com")?.id,
       notes: "Corporate headquarters redesign.",
     },
     {
@@ -466,7 +477,7 @@ async function main() {
       website: "https://primeframe.example.com",
       reviews_count: 112,
       assigned_store_id: andheriStore?.id,
-      assigned_ground_rep_id: userMap.get("rep.amit@leadmap.com")?.id,
+      assigned_ground_rep_id: userMap.get("amit@adorzy.com")?.id,
       notes: "Sound-dampened meeting pods and edit suites.",
     },
     {
@@ -483,7 +494,7 @@ async function main() {
       website: "https://oceanicfreight.example.com",
       reviews_count: 48,
       assigned_store_id: andheriStore?.id,
-      assigned_ground_rep_id: userMap.get("rep.amit@leadmap.com")?.id,
+      assigned_ground_rep_id: userMap.get("amit@adorzy.com")?.id,
       notes: "Dispatch center ergonomic chairs order.",
     },
     {
@@ -500,7 +511,7 @@ async function main() {
       website: "https://zenithdiamonds.example.com",
       reviews_count: 76,
       assigned_store_id: andheriStore?.id,
-      assigned_ground_rep_id: userMap.get("rep.amit@leadmap.com")?.id,
+      assigned_ground_rep_id: userMap.get("amit@adorzy.com")?.id,
       notes: "Bespoke executive boardroom completed.",
     },
     {
@@ -559,7 +570,7 @@ async function main() {
       website: "https://vanguardlaw.example.com",
       reviews_count: 53,
       assigned_store_id: cpStore?.id,
-      assigned_ground_rep_id: userMap.get("rep.rohit@leadmap.com")?.id,
+      assigned_ground_rep_id: userMap.get("rohit@adorzy.com")?.id,
       notes: "High end mahogany conference tables and library shelving.",
     },
     {
@@ -574,7 +585,7 @@ async function main() {
       status: "Assigned",
       region: "North",
       assigned_store_id: cpStore?.id,
-      assigned_ground_rep_id: userMap.get("rep.rohit@leadmap.com")?.id,
+      assigned_ground_rep_id: userMap.get("rohit@adorzy.com")?.id,
       notes: "Institutional classroom benches and lab counters.",
     },
     {

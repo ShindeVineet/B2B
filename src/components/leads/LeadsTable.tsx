@@ -41,6 +41,7 @@ interface Lead {
   funnel_status?: string;
   partners?: { partner_status: string }[];
   category?: string | null;
+  lead_source?: string | null;
   region?: string | null;
   notes?: string | null;
   call_outcome?: string | null;
@@ -694,7 +695,7 @@ export function LeadsTable() {
                         </a>
                       )}
                       <span className="text-[10px] text-[#ff4500] font-bold">
-                        {lead.category || "General"}
+                        {lead.category || "General"} · Source: {lead.lead_source || "Not recorded"}
                       </span>
                     </td>
 

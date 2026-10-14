@@ -34,6 +34,40 @@ export async function assignCaller(
   });
 }
 
+/** Assign a new storeless import in one round-robin pass without one query per lead. */
+export async function assignImportedCallers(
+  tx: Prisma.TransactionClient,
+  leadIds: string[],
+) {
+  if (!leadIds.length) return 0;
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(928060)`;
+  const users = await tx.user.findMany({
+    where: { active: true, role: "store_associate" },
+    orderBy: { id: "asc" },
+    select: { id: true },
+  });
+  if (!users.length) return 0;
+  const key = "__global__";
+  const cursor = await tx.callingRotation.findUnique({ where: { key } });
+  const start = (users.findIndex((user) => user.id === cursor?.last_user_id) + 1) % users.length;
+  const groups = new Map(users.map((user) => [user.id, [] as string[]]));
+  for (const [index, leadId] of leadIds.entries())
+    groups.get(users[(start + index) % users.length].id)!.push(leadId);
+  for (const [userId, ids] of groups)
+    if (ids.length)
+      await tx.lead.updateMany({
+        where: { id: { in: ids }, calling_associate_id: null },
+        data: { calling_associate_id: userId },
+      });
+  const lastUser = users[(start + leadIds.length - 1) % users.length];
+  await tx.callingRotation.upsert({
+    where: { key },
+    create: { key, last_user_id: lastUser.id },
+    update: { last_user_id: lastUser.id },
+  });
+  return leadIds.length;
+}
+
 /** Includes the backlog and retries automatically when associates are added later. */
 export async function distributeWaitingCallers(tx: Prisma.TransactionClient) {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(928060)`;
@@ -60,6 +94,7 @@ export async function distributeWaitingCallers(tx: Prisma.TransactionClient) {
       OR: [
         { geocode_issue_reason: "not_found", location_verified: false, intake_team: "ground" },
         { lead_source: { in: ["CDT", "Phone", "LinkedIn"] } },
+        { intake_team: "caller" },
       ],
     },
     orderBy: [{ created_at: "asc" }, { id: "asc" }],

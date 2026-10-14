@@ -55,8 +55,6 @@ export function ColdLeads({ compact = false }: { compact?: boolean }) {
   useEffect(() => {
     const load = () => refresh().catch((e) => setError(String(e)));
     void load();
-    const timer = setInterval(load, 30000);
-    return () => clearInterval(timer);
   }, []);
   const rows = cases.filter((c) =>
     (c.lead.company_name + " " + (c.lead.region || ""))

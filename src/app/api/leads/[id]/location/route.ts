@@ -71,6 +71,7 @@ export async function PATCH(
       await tx.lead.update({
         where: { id, AND: [getLeadEditFilterForUser(user)] },
         data: {
+          ...(existing.intake_team === "caller" ? { intake_team: "ground" } : {}),
           ...(result
             ? mappingFields(result)
             : {
@@ -96,7 +97,14 @@ export async function PATCH(
           actor_id: user.id,
           action: "LOCATION_UPDATED",
           old_value: JSON.stringify({ lat: existing.lat, lng: existing.lng, address: existing.address, pin_code: existing.pin_code }),
-          new_value: JSON.stringify({ ...location, address: body.address ?? existing.address, pin_code: body.pin_code ?? existing.pin_code }),
+          new_value: JSON.stringify({
+            ...location,
+            address: body.address ?? existing.address,
+            pin_code: body.pin_code ?? existing.pin_code,
+            ...(existing.intake_team === "caller"
+              ? { workflow: "Calling Queue → Route Builder" }
+              : {}),
+          }),
         },
       });
       await refreshAllotment(tx, id, user.id);

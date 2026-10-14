@@ -28,7 +28,7 @@ const TARGET_FIELDS = [
     ["import_geocode_status", "Source geocoding status"],
   ].map(([key, label]) => ({ key, label, required: false })),
   { key: "company_name", label: "Company Name (required for Maps / Directory)", required: false },
-  { key: "phone_no", label: "Phone Number *", required: true },
+  { key: "phone_no", label: "Phone Number", required: false },
   { key: "pin_code", label: "Pin Code", required: false },
   { key: "address", label: "Address", required: false },
   { key: "category", label: "Category / Industry", required: false },
@@ -75,6 +75,8 @@ export function LeadImportWizard() {
     geocodedCount: number;
     autoAssignedCount: number;
     unmappedCount: number;
+    callingQueueCount?: number;
+    routeBuilderCount?: number;
   } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -229,8 +231,8 @@ export function LeadImportWizard() {
   };
 
   const handleStartImport = async () => {
-    if (!columnMapping.phone_no || !columnMapping.lead_source) {
-      setErrorMessage("Map Phone Number and Lead Source. Maps / Directory also require Company, Address, PIN and Contact name.");
+    if (!columnMapping.lead_source) {
+      setErrorMessage("Map Lead Source. Rows with coordinates go to Route Builder; rows without coordinates go to Calling Queue.");
       return;
     }
 
@@ -406,10 +408,10 @@ export function LeadImportWizard() {
                 </div>
                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
                   <span className="text-[11px] text-slate-500 block font-semibold">
-                    Queued for mapping
+                    Calling Queue
                   </span>
                   <span className="text-xl font-black text-[#ff4500]">
-                    {importResult.queuedCount}
+                    {importResult.callingQueueCount ?? importResult.unmappedCount}
                   </span>
                 </div>
                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
@@ -422,10 +424,10 @@ export function LeadImportWizard() {
                 </div>
                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
                   <span className="text-[11px] text-slate-500 block font-semibold">
-                    Empty company rows skipped
+                    Route Builder
                   </span>
                   <span className="text-xl font-black text-emerald-600">
-                    {importResult.invalidRowsSkipped}
+                    {importResult.routeBuilderCount ?? importResult.geocodedCount}
                   </span>
                 </div>
               </div>

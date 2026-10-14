@@ -55,7 +55,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
     ]).catch((e) => setError(String(e)));
   }, [id]);
   return (
-    <main className="p-6 space-y-4">
+    <main className="min-w-0 max-w-full overflow-x-hidden p-6 space-y-4">
       <p role="alert">{error}</p>
       {lead && (
         <>
@@ -100,7 +100,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
           <CallHistory leadId={id} />
           <h2 className="text-xl">Full activity history</h2>
           {lead.activity_logs.map((a) => (
-            <article key={a.id} className="border p-3">
+            <article key={a.id} className="border p-3 break-words">
               <p>
                 {lead.lead_code} · {a.action} • {a.actor?.name || "System"} •{" "}
                 {new Date(a.created_at).toLocaleString()}

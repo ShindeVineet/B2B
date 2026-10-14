@@ -51,8 +51,6 @@ export default function Page() {
   useEffect(() => {
     const load = () => refresh().catch((e) => setError(String(e)));
     void load();
-    const timer = setInterval(load, 5000);
-    return () => clearInterval(timer);
   }, []);
   async function action(id: string, body: object) {
     setBusy(true);

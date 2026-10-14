@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "1000", 10);
     const page = parseInt(searchParams.get("page") || "1", 10);
     const skip = (page - 1) * limit;
+    const compact = searchParams.get("compact") === "true";
 
     // Role-based scoping
     const roleFilter = getLeadFilterForUser(user);
@@ -110,6 +111,14 @@ export async function GET(req: NextRequest) {
     const [leads, totalCount] = await Promise.all([
       prisma.lead.findMany({
         where,
+        omit: compact
+          ? {
+              original_data: true,
+              linkedin_data: true,
+              geocode_candidates: true,
+              extra_notes: true,
+            }
+          : undefined,
         include: {
           partners: { select: { partner_status: true } },
           activity_logs: { where: { action: "FUNNEL_STATUS_UPDATED" }, orderBy: { created_at: "desc" }, take: 1, select: { new_value: true, created_at: true } },

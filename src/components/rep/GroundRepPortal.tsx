@@ -1,4 +1,5 @@
 "use client";
+import { GroupCreatedToggle } from "@/components/leads/GroupCreatedToggle";
 import { useCallback, useEffect, useState, useRef } from "react";
 import { interestBucket, isWonLead } from "@/lib/leads/interest-bucket";
 import { LeadHistory } from "@/components/leads/LeadHistory";
@@ -50,7 +51,7 @@ export function GroundRepPortal({ memberId }: { memberId: string }) {
           {lead.store_visits?.[0] && <p className="text-xs text-slate-500 mt-1">Store visit: {new Date(lead.store_visits[0].scheduled_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST · {lead.store_visits[0].store.name}</p>}
         </div>
       </div>
-      <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap gap-2 text-xs">{!isWonLead(lead)&&<LeadCall leadId={lead.id}/>}<LeadHistory leadId={lead.id}/><ScheduleVisitButton leadId={lead.id} onSaved={()=>void load()}/>{actions(lead,stop)}</div>
+      <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap gap-2 text-xs">{!isWonLead(lead)&&<LeadCall leadId={lead.id}/>}<GroupCreatedToggle leadId={lead.id}/><LeadHistory leadId={lead.id}/><ScheduleVisitButton leadId={lead.id} onSaved={()=>void load()}/>{actions(lead,stop)}</div>
     </article>;
   };
   return <div className="min-h-screen bg-slate-50 pb-24 text-slate-900">
@@ -73,6 +74,6 @@ export function GroundRepPortal({ memberId }: { memberId: string }) {
       </>}
       {["Assigned",...categories,"Consultations"].includes(tab)&&<div className="flex gap-3 text-sm"><button disabled={page===1} onClick={()=>setPage(p=>p-1)}>Previous</button><span>Page {page}</span><button disabled={page*24 >= (tab==="Consultations"?latest.length:shown.length)} onClick={()=>setPage(p=>p+1)}>Next</button></div>}
     </div>
-    {consulting&&<ConsultationModal lead={consulting} isOpen onClose={()=>setConsulting(null)} onSuccess={()=>{setConsulting(null);void load();}}/>}
+    {consulting&&<ConsultationModal context="ground" lead={consulting} isOpen onClose={()=>setConsulting(null)} onSuccess={()=>{setConsulting(null);void load();}}/>}
   </div>;
 }

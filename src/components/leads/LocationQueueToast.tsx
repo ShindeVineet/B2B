@@ -33,14 +33,12 @@ export function LocationQueueToast() {
         sessionStorage.setItem(key, JSON.stringify(ids));
         if (arrived) setCount(arrived);
       } catch {
-        /* Retry on the next interval; don't disrupt the workspace. */
+        /* A manual workspace refresh will retry without disrupting the page. */
       }
     };
     void load();
-    const timer = setInterval(load, 60000);
     return () => {
       live = false;
-      clearInterval(timer);
     };
   }, [user]);
   if (

@@ -34,12 +34,25 @@ export async function GET(req: NextRequest) {
     }
     if (req.nextUrl.searchParams.get("pool") === "true") {
       const p = req.nextUrl.searchParams;
+      const pincodes = p.getAll("pincode").filter(Boolean);
+      const search = p.get("search")?.trim();
+      const scope = getLeadFilterForUser(user);
       const leads = await prisma.lead.findMany({
         where: {
-          AND: [getLeadFilterForUser(user)],
-          ...(p.get("pincode") ? { pin_code: p.get("pincode")! } : {}),
+          AND: [scope],
+          ...(pincodes.length ? { pin_code: { in: pincodes } } : {}),
           ...(p.get("store") ? { assigned_store_id: p.get("store")! } : {}),
           ...(p.get("region") ? { region: p.get("region")! } : {}),
+          ...(search
+            ? {
+                OR: [
+                  { lead_code: { contains: search, mode: "insensitive" } },
+                  { company_name: { contains: search, mode: "insensitive" } },
+                  { owner_name: { contains: search, mode: "insensitive" } },
+                  { phone_no: { contains: search } },
+                ],
+              }
+            : {}),
         },
         select: { id: true },
       });
@@ -47,8 +60,33 @@ export async function GET(req: NextRequest) {
         prisma,
         leads.map((l) => l.id),
       );
+      const calling = await prisma.lead.groupBy({
+        by: ["pin_code"],
+        where: {
+          AND: [scope],
+          intake_team: "caller",
+          ...(pincodes.length ? { pin_code: { in: pincodes } } : {}),
+          ...(p.get("store") ? { assigned_store_id: p.get("store")! } : {}),
+          ...(p.get("region") ? { region: p.get("region")! } : {}),
+          ...(search
+            ? {
+                OR: [
+                  { lead_code: { contains: search, mode: "insensitive" } },
+                  { company_name: { contains: search, mode: "insensitive" } },
+                  { owner_name: { contains: search, mode: "insensitive" } },
+                  { phone_no: { contains: search } },
+                ],
+              }
+            : {}),
+        },
+        _count: { _all: true },
+      });
+      const callingIds = new Set(
+        rows.filter((row) => row.lead.intake_team === "caller").map((row) => row.lead.id),
+      );
+      const visibleRows = rows.filter((row) => !callingIds.has(row.lead.id));
       return NextResponse.json({
-        leads: rows
+        leads: visibleRows
           .filter((r) => !r.reason)
           .map((r) => ({
             id: r.lead.id,
@@ -57,17 +95,22 @@ export async function GET(req: NextRequest) {
             lat: r.lead.lat,
             lng: r.lead.lng,
             pin_code: r.lead.pin_code,
+            lead_source: r.lead.lead_source,
             assigned_ground_rep_id: r.lead.assigned_ground_rep_id,
           })),
-        excluded: rows.filter((r) => r.reason).length,
+        excluded: visibleRows.filter((r) => r.reason).length,
         total: rows.length,
-        excluded_leads: rows
+        excluded_leads: visibleRows
           .filter((r) => r.reason)
           .map((r) => ({
             id: r.lead.id,
             company_name: r.lead.company_name,
             reason: r.reason,
           })),
+        calling_queue: calling.map((row) => ({
+          pin_code: row.pin_code,
+          count: row._count._all,
+        })),
       });
     }
     return NextResponse.json({

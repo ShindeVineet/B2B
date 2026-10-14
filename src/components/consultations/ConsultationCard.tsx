@@ -1,4 +1,5 @@
 "use client";
+import { GroupCreatedToggle } from "@/components/leads/GroupCreatedToggle";
 import { isWonLead } from "@/lib/leads/interest-bucket";
 import { DialogOverlay } from "@/components/shared/DialogOverlay";
 import { LeadCall } from "@/components/leads/LeadCall";
@@ -97,6 +98,7 @@ export function ConsultationCard({
         )));
   return (
     <article className="min-w-0 self-start rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+      <GroupCreatedToggle leadId={row.lead.id} />
       <div className="text-xs font-semibold text-slate-500">
         {row.lead.lead_code} ·{" "}
         {row.responses?.kind === "revisit" ? "Revisit" : "Consultation"}
@@ -160,6 +162,14 @@ function ConsultationDetails({
   callAction?: boolean;
 }) {
   const [photo, setPhoto] = useState<string | null>(null);
+  if (c.responses?.kind === "calling") return <article className="border rounded-xl p-4 bg-white space-y-3">
+    <h2 className="font-bold">Calling consultation · {c.company_name || c.lead.company_name}</h2>
+    <p>Call Picked: Yes</p><p>Level of interest: {c.interest_level}</p>
+    <p>{new Date(c.visit_date).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} · {c.rep.name}</p>
+    <p>Follow-up: {c.next_follow_up_date?.slice(0, 10) || "Not required"}</p>
+    <GroupCreatedToggle leadId={c.lead.id} />
+    {callAction && !isWonLead(c.lead) && <LeadCall leadId={c.lead.id} />}
+  </article>;
   if (c.responses?.kind === "revisit")
     return (
       <article className="border rounded-xl p-4 bg-white space-y-3">

@@ -154,7 +154,7 @@ export function InteractiveLeadMap() {
     () =>
       Promise.all([
         fetchAllMapLeads<LeadItem>((input, init) =>
-          fetch(`${input}&pin_areas=true`, init),
+          fetch(`${input}&pin_areas=true&compact=true`, init),
         ).then(data => { const rows = data.map(lead => ({ ...lead, status: lead.funnel_status || lead.status })); setLeads(rows); setSelectedLead(current => current ? rows.find(row => row.id === current.id) || current : null); }),
         fetch("/api/stores").then(async (res) => {
           if (!res.ok) throw new Error("Unable to load stores");

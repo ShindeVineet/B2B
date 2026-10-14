@@ -13,6 +13,7 @@ export default async function TeamPage() {
     select: {
       id: true,
       name: true,
+      designation: true,
       email: true,
       role: true,
       store_id: true,
@@ -51,6 +52,7 @@ export default async function TeamPage() {
             <thead className="bg-slate-50 text-slate-600 font-extrabold uppercase tracking-wider text-[11px] border-b border-slate-200">
               <tr>
                 <th className="px-5 py-3.5">Name</th>
+                <th className="px-5 py-3.5">Designation</th>
                 <th className="px-5 py-3.5">Email & Phone</th>
                 <th className="px-5 py-3.5">Role</th>
                 <th className="px-5 py-3.5">Assigned Region</th>
@@ -68,6 +70,9 @@ export default async function TeamPage() {
                       {member.name.slice(0, 2).toUpperCase()}
                     </div>
                     <span>{member.name}</span>
+                  </td>
+                  <td className="px-5 py-4">
+                    {member.designation || "—"}
                   </td>
                   <td className="px-5 py-4">
                     <span className="text-slate-800 block">{member.email}</span>

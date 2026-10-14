@@ -1,8 +1,8 @@
-import { validateIntake } from "@/lib/leads/intake";
-import { assignCaller } from "@/lib/calling/distribute";
-import { importLocation } from "@/lib/import-location";
-import { parseLeadPhones } from "@/lib/leads/phones";
-import { parseImportDate } from "@/lib/import-date";
+import { assignImportedCallers } from "@/lib/calling/distribute";
+import {
+  importDuplicateKey,
+  prepareImportRow,
+} from "@/lib/leads/import-row";
 import { randomUUID } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
@@ -35,10 +35,7 @@ export async function POST(req: NextRequest) {
     try {
       for (const [index, row] of rows.entries()) {
         try {
-          const intake = validateIntake({ ...row, company_name: String(row.company_name || ""), owner_name: String(row.owner_name || row.contact_name || ""), phone_no: String(row.phone_no || ""), pin_code: String(row.pin_code || ""), address: String(row.address || "") });
-          if (["Manual", "Walk-in"].includes(intake.lead_source)) throw new RangeError("Use Add lead for Manual / Walk-in so the consultation is saved with the lead");
-          parseImportDate(row.scraped_date);
-          parseLeadPhones([row.phone_no]);
+          prepareImportRow(row as Record<string, unknown>);
         } catch (error) {
           throw new RangeError(
             `Data row ${index + 1}: ${(error as Error).message}. Check the column mapping or correct this cell. No rows were saved.`,
@@ -55,19 +52,21 @@ export async function POST(req: NextRequest) {
     const performImport = async (
       progress: (processed: number, total: number) => void,
     ) => {
-      // Fetch existing phone + pin combinations for duplicate detection
+      const importBatchId = randomUUID();
+      // Use the same identity keys for existing and incoming records, including
+      // location-only rows which have no phone number.
       const existingLeads = await prisma.lead.findMany({
-        select: { phone_no: true, pin_code: true },
-        where: {
-          phone_no: { not: null },
-          pin_code: { not: null },
+        select: {
+          company_name: true,
+          phone_no: true,
+          pin_code: true,
+          lat: true,
+          lng: true,
         },
       });
 
       const existingKeySet = new Set(
-        existingLeads.map(
-          (l) => `${(l.phone_no || "").trim()}_${(l.pin_code || "").trim()}`,
-        ),
+        existingLeads.map(importDuplicateKey),
       );
 
       let totalImported = 0;
@@ -91,37 +90,25 @@ export async function POST(req: NextRequest) {
       let processed = 0;
       for (const raw of rows) {
         try {
-          const intake = validateIntake({ ...raw, company_name: String(raw.company_name || ""), owner_name: String(raw.owner_name || raw.contact_name || ""), phone_no: String(raw.phone_no || ""), pin_code: String(raw.pin_code || ""), address: String(raw.address || "") });
-          const company_name = intake.company_name;
-
-          const numbers = parseLeadPhones([raw.phone_no]);
-          const phone_no = numbers[0] || null;
-          const pin_code = raw.pin_code ? raw.pin_code.toString().trim() : null;
-          const address = raw.address ? raw.address.toString().trim() : null;
+          const prepared = prepareImportRow(raw as Record<string, unknown>);
 
           // Duplicate check
-          if (phone_no && pin_code) {
-            const key = `${phone_no}_${pin_code}`;
-            if (existingKeySet.has(key) || seenInBatch.has(key)) {
-              duplicatesSkipped++;
-              if (skipDuplicates) {
-                continue;
-              }
+          const key = importDuplicateKey(prepared);
+          if (existingKeySet.has(key) || seenInBatch.has(key)) {
+            duplicatesSkipped++;
+            if (skipDuplicates) {
+              continue;
             }
-            seenInBatch.add(key);
           }
+          seenInBatch.add(key);
 
-          const detectedRegion = raw.region
-            ? raw.region.toString().trim()
-            : null;
-          const location = importLocation(raw);
-          if (location?.valid && !location.mismatch) geocodedCount++;
+          if (prepared.location_verified) geocodedCount++;
           else unmappedCount++;
 
 
           const leadId = randomUUID();
           importedPhones.push(
-            ...numbers.map((phone_number, i) => ({
+            ...prepared.phones.map((phone_number, i) => ({
               lead_id: leadId,
               phone_number,
               is_primary: i === 0,
@@ -131,34 +118,43 @@ export async function POST(req: NextRequest) {
           );
           leadsToCreate.push({
             id: leadId,
-            company_name,
-            owner_name: intake.owner_name || null,
-            intake_team: intake.intake_team,
-            phone_no,
-            pin_code,
-            address,
-            lat: location?.valid ? location.lat : null,
-            lng: location?.valid ? location.lng : null,
-            geocode_status: location?.valid ? (location.mismatch ? "mismatch_flagged" : "ok") : location ? "mapping_issue" : null,
-            geocode_source: location?.valid ? "google_link" : null,
-            location_verified: !!location?.valid && !location.mismatch,
-
-            geocode_issue_reason: location ? (location.valid ? (location.mismatch ? "Imported matched name differs from firm; confirm location" : null) : location.reason) : raw.google_map_link?.toString().trim() ? "Queued for geocoding" : "Awaiting manager location",
-            category: raw.category ? raw.category.toString().trim() : "General",
-            lead_source: intake.lead_source,
-            region: detectedRegion || "Unassigned",
-            website: raw.website ? raw.website.toString().trim() : null,
-            google_map_link: raw.google_map_link
-              ? raw.google_map_link.toString().trim()
-              : null,
+            company_name: prepared.company_name,
+            owner_name: prepared.owner_name,
+            intake_team: prepared.intake_team,
+            phone_no: prepared.phone_no,
+            pin_code: prepared.pin_code,
+            address: prepared.address,
+            lat: prepared.lat,
+            lng: prepared.lng,
+            geocode_status: prepared.geocode_status,
+            geocode_source: prepared.geocode_source,
+            location_verified: prepared.location_verified,
+            geocode_issue_reason: prepared.geocode_issue_reason,
+            category: prepared.category,
+            lead_source: prepared.lead_source,
+            region: prepared.region,
+            website: prepared.website,
+            google_map_link: prepared.google_map_link,
             reviews_count: raw.reviews_count
               ? parseInt(raw.reviews_count, 10) || 0
               : 0,
             status: raw.status || "New",
-            notes: raw.notes ? raw.notes.toString().trim() : null,
-            extra_notes: [raw.extra_notes, ...["email", "contact_name", "place_id", "matched_name", "formatted_address", "import_geocode_status"].filter(key => raw[key]).map(key => `${key}: ${raw[key]}`)].filter(Boolean).join("\n") || null,
+            notes: prepared.notes,
+            extra_notes: [
+              prepared.extra_notes,
+              ...[
+                "place_id",
+                "matched_name",
+                "formatted_address",
+                "import_geocode_status",
+              ]
+                .filter((field) => raw[field])
+                .map((field) => `${field}: ${raw[field]}`),
+            ]
+              .filter(Boolean)
+              .join("\n") || null,
             assigned_store_id: null,
-            scraped_date: parseImportDate(raw.scraped_date),
+            scraped_date: prepared.scraped_date,
           });
         } finally {
           progress(++processed, rows.length);
@@ -169,7 +165,12 @@ export async function POST(req: NextRequest) {
         await prisma.$transaction(
           async (tx) => {
             await tx.lead.createMany({ data: leadsToCreate });
-            for (const lead of leadsToCreate) if (lead.intake_team === "caller") await assignCaller(tx, lead.id!);
+            await assignImportedCallers(
+              tx,
+              leadsToCreate
+                .filter((lead) => lead.intake_team === "caller")
+                .map((lead) => lead.id!),
+            );
             await tx.leadPhone.updateMany({
               where: { lead_id: { in: leadsToCreate.map((l) => l.id!) } },
               data: { source: "import" },
@@ -177,7 +178,12 @@ export async function POST(req: NextRequest) {
             await tx.leadPhone.createMany({
               data: importedPhones.filter((p) => !p.is_primary),
             });
-            const linkedLeads = leadsToCreate.filter(lead => lead.google_map_link && !lead.geocode_status);
+            const linkedLeads = leadsToCreate.filter(
+              (lead) =>
+                lead.intake_team !== "caller" &&
+                lead.google_map_link &&
+                !lead.geocode_status,
+            );
             if (linkedLeads.length) {
             const job = await tx.geocodeJob.create({
               data: { created_by: user.id },
@@ -195,17 +201,22 @@ export async function POST(req: NextRequest) {
                 lead_id: lead.id!,
                 actor_id: user.id,
                 action: "BULK_IMPORT",
-                new_value: "Imported lead",
+                new_value: JSON.stringify({
+                  import_batch_id: importBatchId,
+                  source: lead.lead_source,
+                  team: lead.intake_team,
+                }),
               })),
             });
           },
-          { timeout: 60000 },
+          { timeout: 180000 },
         );
         totalImported = leadsToCreate.length;
       }
 
       return {
         success: true,
+        importBatchId,
         totalProcessed: rows.length,
         totalImported,
         invalidRowsSkipped,
@@ -215,6 +226,12 @@ export async function POST(req: NextRequest) {
         unmappedCount,
         geocodeJobId,
         queuedCount: totalImported,
+        callingQueueCount: leadsToCreate.filter(
+          (lead) => lead.intake_team === "caller",
+        ).length,
+        routeBuilderCount: leadsToCreate.filter(
+          (lead) => lead.intake_team === "ground",
+        ).length,
       };
     };
 

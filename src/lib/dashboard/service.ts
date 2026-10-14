@@ -16,7 +16,7 @@ export async function dashboardOverview(user: AuthUser) {
     prisma.partner.findMany({ where: { partner_status: { in: ["active", "pending_review"] }, ...(user.role === "store_associate" || user.role === "ground_rep" || user.role === "analyst" ? { OR: [{ source_lead: where }, { submitted_by: user.id }] } : {}) }, include: { source_lead: { select: { intake_team: true, lead_source: true } } } }),
   ]);
   const associate = user.role === "store_associate";
-  const records = consultations.map(c => ({ ...c, channel: associate ? (c.direct_store_meeting || c.lead.intake_team === "store" ? "store" as const : "caller" as const) : channelFor({ ...c, ...c.lead, rep_role: c.rep.role }) }));
+  const records = consultations.map(c => ({ ...c, channel: associate ? (c.interaction_channel !== "caller" && (c.direct_store_meeting || c.lead.intake_team === "store") ? "store" as const : "caller" as const) : channelFor({ ...c, ...c.lead, rep_role: c.rep.role }) }));
   const recent = new Map(latestByLead(records).map(c => [c.lead_id, c]));
   const active = partners.filter(p => p.partner_status === "active").map(p => ({ id: p.id, channel: associate ? (p.source_lead?.intake_team === "caller" ? "caller" as const : "store" as const) : onboardingChannel(p.lead_gen_source, p.lead_gen_source_other, p.source_lead_id && recent.get(p.source_lead_id)?.channel || channelFor(p.source_lead || {})) }));
   const groupIds = new Set(leads.filter(l => l.whatsapp_group_created).map(l => l.id));

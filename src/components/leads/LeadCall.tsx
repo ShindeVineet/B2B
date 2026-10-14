@@ -1,4 +1,5 @@
 "use client";
+import { CallingConsultationModal } from "@/components/consultations/CallingConsultationModal";
 import { CallHistory } from "@/components/cold/CallHistory";
 import { useState } from "react";
 import { DialogOverlay } from "@/components/shared/DialogOverlay";
@@ -19,150 +20,15 @@ export function LeadCall({
   children?: React.ReactNode;
 }) {
   const [history, setHistory] = useState(false);
-  const [open, setOpen] = useState(false),
-    [notes, setNotes] = useState(""),
-    [date, setDate] = useState(""),
-    [error, setError] = useState(""),
-    [busy, setBusy] = useState(false),
-    [saved, setSaved] = useState(false);
-  return (
-    <span
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <button
-        type="button"
-        className={className}
-        onClick={() => {
-          setOpen(true);
-          setSaved(false);
-          setError("");
-        }}
-      >
-        Log a call
-      </button>
-      {showHistory && (
-        <button
-          type="button"
-          className="ml-2 text-xs"
-          onClick={() => setHistory(true)}
-        >
-          Call log
-        </button>
-      )}
-      {history && (
-        <DialogOverlay
-          aria-label="Call log"
-          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4"
-        >
-          <section className="bg-white border rounded-xl p-5 w-full max-w-lg space-y-3">
-            <div className="flex justify-between items-center">
-              <h2 className="font-bold">Call log</h2>
-              <button type="button" onClick={() => setHistory(false)}>
-                Close
-              </button>
-            </div>
-            <CallHistory leadId={leadId} />
-          </section>
-        </DialogOverlay>
-      )}
-      {saved && (
-        <span role="status" className="text-sm text-green-800 ml-2">
-          Call saved
-        </span>
-      )}
-      {open && (
-        <DialogOverlay
-          aria-label="Log office-phone call"
-          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4"
-        >
-          <form
-            className="bg-white rounded-xl border border-slate-300 p-5 w-full max-w-lg space-y-4 text-slate-900"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              setBusy(true);
-              setError("");
-              try {
-                const r = await fetch(`/api/leads/${leadId}/calls`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    notes,
-                    next_follow_up_date: date || null,
-                  }),
-                });
-                const d = await r.json();
-                if (!r.ok) throw Error(d.error);
-                setOpen(false);
-                setNotes("");
-                setDate("");
-                setSaved(true);
-                window.dispatchEvent(
-                  new CustomEvent("lead-contact-updated", {
-                    detail: { leadId, date: d.call.created_at },
-                  }),
-                );
-                window.dispatchEvent(new Event("followups-updated"));
-              } catch (e) {
-                setError((e as Error).message);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            <h2 className="text-lg font-bold">Log office-phone call</h2>
-            <p className="text-sm text-slate-600">
-              Record the call made using your office phone.
-            </p>
-            <LeadPhones leadId={leadId} />
-            <label className="block text-sm font-semibold">
-              Call notes
-              <textarea
-                required
-                maxLength={10000}
-                rows={5}
-                className="block w-full border border-slate-300 rounded-lg p-3 mt-1"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
-            </label>
-            <label className="block text-sm font-semibold">
-              Next follow-up date (optional)
-              <input
-                type="date"
-                className="block w-full border border-slate-300 rounded-lg p-3 mt-1"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
-            </label>
-            {error && (
-              <p role="alert" className="text-red-700">
-                {error}
-              </p>
-            )}
-            <div className="flex gap-3">
-              <button
-                disabled={busy}
-                type="submit"
-                className="bg-orange-600 px-4 py-2 rounded-lg"
-              >
-                {busy ? "Saving…" : "Save call"}
-              </button>
-              <button
-                disabled={busy}
-                type="button"
-                className="px-4 py-2 border rounded-lg"
-                onClick={() => setOpen(false)}
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </DialogOverlay>
-      )}
-    </span>
-  );
+  const [open, setOpen] = useState(false);
+  return <span onMouseDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
+    <button type="button" className={className} onClick={() => setOpen(true)}>Log a call</button>
+    {showHistory && <button type="button" className="ml-2 text-xs" onClick={() => setHistory(true)}>Call log</button>}
+    {open && <CallingConsultationModal leadId={leadId} onClose={() => setOpen(false)} />}
+    {history && <DialogOverlay aria-label="Call log" className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4"><section className="bg-white border rounded-xl p-5 w-full max-w-lg space-y-3"><div className="flex justify-between"><h2 className="font-bold">Call log</h2><button type="button" onClick={() => setHistory(false)}>Close</button></div><CallHistory leadId={leadId} /></section></DialogOverlay>}
+  </span>;
 }
+
 export function LeadPhones({ leadId }: { leadId: string }) {
   const [phones, setPhones] = useState<Phone[]>([]),
     [open, setOpen] = useState(false),

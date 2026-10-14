@@ -22,6 +22,32 @@ export async function GET(req: NextRequest) {
       },
     },
   };
+  if (req.nextUrl.searchParams.get("count") === "true") {
+    const [caseIds, candidates] = await Promise.all([
+      prisma.coldLeadCase.findMany({ where, select: { lead_id: true } }),
+      prisma.lead.findMany({
+        where: {
+          AND: [getLeadFilterForUser(u)],
+          partners: { none: { partner_status: "active" as const } },
+          status: { notIn: ["onboarded", "Converted", "Closed-Won", "Won"] },
+          consultations: { some: { interest_level: "Low" } },
+        },
+        select: {
+          id: true,
+          consultations: {
+            orderBy: [{ visit_date: "desc" }, { created_at: "desc" }, { id: "desc" }],
+            take: 1,
+            select: { interest_level: true },
+          },
+        },
+      }),
+    ]);
+    const existing = new Set(caseIds.map((row) => row.lead_id));
+    const interestOnly = candidates.filter(
+      (lead) => lead.consultations[0]?.interest_level === "Low" && !existing.has(lead.id),
+    ).length;
+    return NextResponse.json({ count: caseIds.length + interestOnly });
+  }
   const cases = await prisma.coldLeadCase.findMany({
     where,
     include: { lead: true },
@@ -95,7 +121,5 @@ export async function GET(req: NextRequest) {
     (a, b) =>
       new Date(a.flagged_at).getTime() - new Date(b.flagged_at).getTime(),
   );
-  if (req.nextUrl.searchParams.get("count") === "true")
-    return NextResponse.json({ count: rows.length });
   return NextResponse.json({ cases: rows });
 }

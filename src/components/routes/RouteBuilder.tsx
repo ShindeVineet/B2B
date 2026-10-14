@@ -17,6 +17,7 @@ type Lead = ClusterLead & {
   company_name: string;
   lead_code: string;
   pin_code: string | null;
+  lead_source?: string | null;
 };
 type SavedRoute = {
   id: string;
@@ -76,7 +77,8 @@ export function RouteBuilder() {
     [reps, setReps] = useState<
       { id: string; name: string; assigned_store?: { name: string } | null }[]
     >([]);
-  const [pin, setPin] = useState(""),
+  const [pins, setPins] = useState<string[]>([]),
+    [pinSearch, setPinSearch] = useState(""),
     [region, setRegion] = useState(""),
     [store, setStore] = useState(""),
     [n, setN] = useState(10),
@@ -98,6 +100,8 @@ export function RouteBuilder() {
     [notice, setNotice] = useState(""),
     [status, setStatus] = useState("");
   const [addId, setAddId] = useState(""),
+    [leadSearch, setLeadSearch] = useState(""),
+    [searchResults, setSearchResults] = useState<Lead[]>([]),
     [repId, setRepId] = useState(""),
     [date, setDate] = useState(todayIndia()),
     [target, setTarget] = useState("");
@@ -120,10 +124,9 @@ export function RouteBuilder() {
     setRoutes(d.routes);
   }
   async function loadPool() {
-    const d = await api(
-      "/api/route-plans?" +
-        new URLSearchParams({ pool: "true", pincode: pin, store, region }),
-    );
+    const params = new URLSearchParams({ pool: "true", store, region });
+    for (const pincode of pins) params.append("pincode", pincode);
+    const d = await api("/api/route-plans?" + params);
     setPool(d.leads);
     setExcluded(d.excluded_leads || []);
     setSelection(
@@ -137,9 +140,27 @@ export function RouteBuilder() {
       ),
     );
     setPreview(null);
+    const calling = (d.calling_queue || []) as { pin_code: string | null; count: number }[];
+    const callingText = calling.length
+      ? ` Calling Queue: ${calling.map((row) => `${row.pin_code || "no PIN"} has ${row.count}`).join(", ")}. These leads are not shown in Route Builder until their location is completed.`
+      : "";
     setNotice(
-      `${d.total} leads match these filters: ${d.leads.filter((l: Lead & { assigned_ground_rep_id?: string }) => !l.assigned_ground_rep_id).length} available, ${d.leads.filter((l: Lead & { assigned_ground_rep_id?: string }) => l.assigned_ground_rep_id).length} assigned to a person but eligible for scheduling, ${d.excluded} unavailable. Only selected eligible leads are used to build routes.`,
+      `${d.total} leads match these filters: ${d.leads.filter((l: Lead & { assigned_ground_rep_id?: string }) => !l.assigned_ground_rep_id).length} available, ${d.leads.filter((l: Lead & { assigned_ground_rep_id?: string }) => l.assigned_ground_rep_id).length} assigned to a person but eligible for scheduling, ${d.excluded} unavailable.${callingText} Only selected eligible leads are used to build routes.`,
     );
+  }
+
+  async function searchAndAddLead() {
+    const query = leadSearch.trim();
+    if (!query) return;
+    const params = new URLSearchParams({ pool: "true", search: query });
+    const d = await api("/api/route-plans?" + params);
+    setSearchResults(d.leads || []);
+    if (!(d.leads || []).length)
+      setNotice(
+        d.calling_queue?.length
+          ? "This lead is in Calling Queue and cannot be added until its location is completed."
+          : "No route-eligible lead matched that search.",
+      );
   }
   useEffect(() => {
     Promise.all([
@@ -173,12 +194,12 @@ export function RouteBuilder() {
     }
   }
   const area = {
-    pincode: pin,
+    pincodes: pins,
     store,
     region,
     bounds,
     label:
-      pin ||
+      (pins.length ? pins.join(", ") : "") ||
       stores.find((s) => s.id === store)?.name ||
       region ||
       "Selected area",
@@ -342,49 +363,60 @@ export function RouteBuilder() {
             <RouteIcon /> Create Route Map
           </h2>
           <div className="grid gap-3 md:grid-cols-3">
-            <label>
-              PIN / area
-              <select
-                className="w-full"
-                value={pin}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setPin(value);
-                  const regions = [
-                    ...new Set(
-                      filterPairs
-                        .filter((p) => p.pin_code === value && p.region)
-                        .map((p) => p.region!),
-                    ),
-                  ];
-                  setRegion(regions.length === 1 ? regions[0] : "");
-                  setPool([]);
-                  setBounds(null);
-                  setExcluded([]);
-                  setNotice("");
-                  setSelection(new Set());
-                  setPreview(null);
-                }}
-              >
-                <option value="">
-                  {region ? "All PINs in " + region : "All PIN codes"}
-                </option>
-                {[
-                  ...new Set(
-                    filterPairs
-                      .filter((p) => !region || p.region === region)
-                      .map((p) => p.pin_code)
-                      .filter(Boolean),
-                  ),
-                ].map((p) => (
-                  <option key={p} value={p!}>
-                    {p} ·{" "}
-                    {filterPairs.find((f) => f.pin_code === p)?.area ||
-                      "Area not specified"}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <details className="relative rounded-lg border p-3">
+              <summary className="cursor-pointer font-semibold">
+                PIN / area · {pins.length ? `${pins.length} selected` : "All PINs"}
+              </summary>
+              <div className="mt-3 space-y-2">
+                <input
+                  aria-label="Search PIN or area"
+                  className="w-full"
+                  placeholder="Search PIN or area"
+                  value={pinSearch}
+                  onChange={(e) => setPinSearch(e.target.value)}
+                />
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setPins([
+                    ...new Set(filterPairs.filter((p) => !region || p.region === region).map((p) => p.pin_code).filter((p): p is string => !!p)),
+                  ])}>Select all</button>
+                  <button type="button" onClick={() => setPins([])}>Clear</button>
+                </div>
+                <div className="max-h-48 overflow-auto">
+              {[
+                ...new Set(
+                  filterPairs
+                    .filter((p) => !region || p.region === region)
+                    .map((p) => p.pin_code)
+                    .filter((p): p is string => !!p),
+                ),
+              ].filter((pincode) => {
+                const area = filterPairs.find((pair) => pair.pin_code === pincode)?.area || "";
+                return `${pincode} ${area}`.toLowerCase().includes(pinSearch.trim().toLowerCase());
+              }).map((pincode) => (
+                <label className="block py-1 text-sm" key={pincode}>
+                  <input
+                    type="checkbox"
+                    checked={pins.includes(pincode)}
+                    onChange={(e) => {
+                      setPins((current) =>
+                        e.target.checked
+                          ? [...current, pincode]
+                          : current.filter((value) => value !== pincode),
+                      );
+                      setPool([]);
+                      setBounds(null);
+                      setExcluded([]);
+                      setNotice("");
+                      setSelection(new Set());
+                      setPreview(null);
+                    }}
+                  />{" "}
+                  {pincode} · {filterPairs.find((f) => f.pin_code === pincode)?.area || "Area not specified"}
+                </label>
+              ))}
+                </div>
+              </div>
+            </details>
             <label>
               Store
               <select
@@ -416,14 +448,14 @@ export function RouteBuilder() {
                 onChange={(e) => {
                   const value = e.target.value;
                   setRegion(value);
-                  const pins = [
+                  const regionPins = [
                     ...new Set(
                       filterPairs
                         .filter((p) => p.region === value && p.pin_code)
                         .map((p) => p.pin_code!),
                     ),
                   ];
-                  setPin(pins.length === 1 ? pins[0] : "");
+                  setPins((current) => current.filter((pin) => regionPins.includes(pin)));
                   setPool([]);
                   setBounds(null);
                   setExcluded([]);
@@ -446,6 +478,49 @@ export function RouteBuilder() {
           <button disabled={busy} onClick={() => void run(loadPool)}>
             Load eligible leads
           </button>
+          <div className="rounded-xl border p-3 space-y-2">
+            <label className="block font-semibold">
+              Search and add a lead manually
+              <input
+                className="mt-1 w-full"
+                placeholder="Lead ID, company, contact, or phone"
+                value={leadSearch}
+                onChange={(e) => setLeadSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void run(searchAndAddLead);
+                  }
+                }}
+              />
+            </label>
+            <button disabled={busy || !leadSearch.trim()} onClick={() => void run(searchAndAddLead)}>
+              Search eligible leads
+            </button>
+            {!!searchResults.length && (
+              <div className="max-h-40 overflow-auto divide-y">
+                {searchResults.map((lead) => (
+                  <div className="flex items-center justify-between gap-3 py-2" key={lead.id}>
+                    <span className="text-sm">
+                      {lead.lead_code} · {lead.company_name} · {lead.pin_code || "no PIN"} · {lead.lead_source || "source unknown"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPool((current) =>
+                          current.some((row) => row.id === lead.id) ? current : [...current, lead],
+                        );
+                        setSelection((current) => new Set(current).add(lead.id));
+                        setNotice(`${lead.lead_code} was added to the selected route pool.`);
+                      }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="flex gap-4 flex-wrap items-end">
             <label>
               Leads per route

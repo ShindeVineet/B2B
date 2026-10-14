@@ -1,0 +1,112 @@
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { openSync, writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { PrismaClient } from '@prisma/client';
+import jwt from 'jsonwebtoken';
+const db = new PrismaClient();
+const base = 'http://localhost:3014';
+let server, chrome, ws;
+const ids = [];
+try {
+ const head = await db.user.findFirstOrThrow({ where: { role: 'b2b_head', active: true } });
+ const caller = await db.user.findFirstOrThrow({ where: { role: 'store_associate', active: true } });
+ const rep = await db.user.findFirstOrThrow({ where: { role: 'ground_rep', active: true } });
+ const analyst = await db.user.findFirstOrThrow({ where: { role: 'analyst', active: true } });
+ const log = openSync('/tmp/calling-consultation-smoke.log','w');
+ server = spawn('node', ['node_modules/next/dist/bin/next','dev','--webpack','-p','3014'], { stdio: ['ignore',log,log], env: { ...process.env, NEXT_DIST_DIR: '.next-phase9-calling-check' } });
+ let ready = false;
+ for(let i=0;i<90;i++) { try { if((await fetch(base+'/login')).ok){ready=true;break;} } catch {} await new Promise(r=>setTimeout(r,500)); }
+ assert.ok(ready,'Development server ready');
+ const api = async (path,user,body,method=body?'POST':'GET') => {
+  const r = await fetch(base+path,{method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+jwt.sign({id:user.id},process.env.JWT_SECRET,{expiresIn:'10m'})},...(body ? {body:JSON.stringify(body)} : {})});
+  return {status:r.status,data:await r.json()};
+ };
+ const lead = await db.lead.create({data:{company_name:'Calling flow verification '+randomUUID(),lead_source:'Phone',intake_team:'caller',calling_associate_id:caller.id,assigned_ground_rep_id:rep.id,status:'New'}}); ids.push(lead.id);
+ const path=`/api/leads/${lead.id}`;
+ assert.equal((await api('/api/consultations/open?lead_id='+lead.id,caller)).data.mode,'calling');
+ const picked=await api(path+'/calling-consultation',caller,{call_picked:true,interest_level:'Medium',whatsapp_group_created:false});
+ assert.equal(picked.status,200,JSON.stringify(picked));
+ assert.equal(picked.data.consultation.interaction_channel,'caller');
+ assert.equal(picked.data.consultation.rep_id,caller.id);
+ assert.equal(await db.consultation.count({where:{lead_id:lead.id}}),1);
+ const unanswered=await api(path+'/calling-consultation',caller,{call_picked:false,interest_level:'Low',whatsapp_group_created:true,next_follow_up_date:'2099-01-01'});
+ assert.equal(unanswered.status,200,JSON.stringify(unanswered));
+ assert.equal(unanswered.data.consultation,null);
+ const today=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'});
+ const tomorrow=new Date(new Date(today).getTime()+86400000).toISOString().slice(0,10);
+ assert.equal(unanswered.data.next_follow_up_date,tomorrow);
+ const follow=await db.followUp.findUniqueOrThrow({where:{lead_id:lead.id}});
+ assert.equal(follow.rep_id,caller.id); assert.equal(follow.due_date.toISOString().slice(0,10),tomorrow);
+ assert.equal(await db.consultation.count({where:{lead_id:lead.id}}),1);
+ assert.equal((await db.consultation.findFirstOrThrow({where:{lead_id:lead.id}})).interest_level,'Medium');
+ assert.equal((await db.lead.findUniqueOrThrow({where:{id:lead.id}})).whatsapp_group_created,false);
+ assert.equal((await api(path+'/group',caller,{previous:false,whatsapp_group_created:true},'PATCH')).status,200);
+ assert.equal((await api(path+'/group',caller)).data.whatsapp_group_created,true);
+ assert.equal((await api(path+'/group',caller,{previous:false,whatsapp_group_created:false},'PATCH')).status,409);
+ assert.equal((await api(path+'/group',rep,{previous:true,whatsapp_group_created:false},'PATCH')).status,200);
+ assert.equal((await api(path+'/group',analyst,{previous:false,whatsapp_group_created:true},'PATCH')).status,403);
+ assert.equal((await api(path+'/calling-consultation',analyst,{call_picked:false})).status,403);
+ assert.equal((await api(path+'/calling-consultation',caller,{call_picked:true,interest_level:'High',whatsapp_group_created:false,next_follow_up_date:'2020-01-01'})).status,400);
+ const unrelated = await db.lead.create({data:{company_name:'Unrelated verification '+randomUUID(),lead_source:'Phone',intake_team:'caller',calling_associate_id:head.id}}); ids.push(unrelated.id);
+ assert.equal((await api(`/api/leads/${unrelated.id}/calling-consultation`,caller,{call_picked:false})).status,404);
+ assert.equal((await api(`/api/leads/${unrelated.id}/group`,caller,{previous:false,whatsapp_group_created:true},'PATCH')).status,404);
+ if (process.argv.includes('--browser')) {
+  chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', ['--headless=new','--disable-gpu','--no-first-run','--remote-debugging-port=9344',`--user-data-dir=/tmp/calling-browser-${randomUUID()}`,'about:blank'], {stdio:'ignore'});
+  let target;
+  for(let i=0;i<80;i++){try{target=await(await fetch('http://127.0.0.1:9344/json/new?about:blank',{method:'PUT'})).json();break;}catch{}await new Promise(r=>setTimeout(r,250));}
+  assert.ok(target?.webSocketDebuggerUrl);
+  ws=new WebSocket(target.webSocketDebuggerUrl);await new Promise((resolve,reject)=>{ws.onopen=resolve;ws.onerror=reject;});
+  let seq=0;const pending=new Map();
+  ws.onmessage=e=>{const m=JSON.parse(e.data);const p=pending.get(m.id);if(p){pending.delete(m.id);clearTimeout(p.timer);if(m.error)p.reject(Error(m.error.message));else p.resolve(m.result);}};
+  const cdp=(method,params={})=>new Promise((resolve,reject)=>{const id=++seq;pending.set(id,{resolve,reject,timer:setTimeout(()=>reject(Error(method+' timeout')),20000)});ws.send(JSON.stringify({id,method,params}));});
+  const evaluate=async expression=>{const r=await cdp('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.text);return r.result.value;};
+  const wait=async expression=>{for(let i=0;i<100;i++){if(await evaluate(`Boolean(${expression})`))return;await new Promise(r=>setTimeout(r,200));}throw Error('Browser condition: '+expression+'; page: '+await evaluate('document.body.innerText.slice(0,1800)'));};
+  await cdp('Network.setCookie',{name:'leadmap_token',value:jwt.sign({id:caller.id},process.env.JWT_SECRET,{expiresIn:'10m'}),url:base,httpOnly:true});
+  await cdp('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+  await cdp('Page.navigate',{url:base+'/leads/'+lead.id});
+  await wait("[...document.querySelectorAll('button')].some(b=>b.textContent==='Add consultation')");
+  await evaluate("[...document.querySelectorAll('button')].find(b=>b.textContent==='Add consultation').click()");
+  await wait("document.querySelector('[aria-label=\"Calling consultation\"] input[type=radio]:not(:disabled)')");
+  await evaluate("[...document.querySelectorAll('[aria-label=\"Calling consultation\"] input[type=radio]')][1].click()");
+  await wait("document.body.innerText.includes('scheduled automatically for tomorrow')");
+  assert.equal(await evaluate("document.querySelectorAll('[aria-label=\"Calling consultation\"] select').length"),0);
+  await evaluate("document.querySelector('[aria-label=\"Calling consultation\"] input[type=radio]').click()");
+  await wait("document.querySelector('[aria-label=\"Calling consultation\"] select')");
+  assert.equal(await evaluate("document.querySelectorAll('[aria-label=\"Calling consultation\"] select').length"),1);
+  assert.equal(await evaluate("document.querySelectorAll('[aria-label=\"Calling consultation\"] input[type=file], [aria-label=\"Calling consultation\"] textarea').length"),0);
+  assert.ok(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'));
+  await new Promise(r=>setTimeout(r,500));
+  await cdp('Emulation.setPageScaleFactor', { pageScaleFactor: 1 });
+  const layout = await evaluate("(()=>{const f=document.querySelector('[aria-label=\"Calling consultation\"] form'),r=f.getBoundingClientRect();return {top:r.top,bottom:r.bottom,height:r.height,viewport:window.innerHeight,width:window.innerWidth,display:getComputedStyle(f).display};})()");
+  console.log('Calling form layout:',JSON.stringify(layout));
+  assert.ok(layout.top>=0 && layout.bottom<=844 && layout.width<=391 && layout.height>100,'Calling form fits visible mobile viewport');
+  writeFileSync('/tmp/calling-consultation-mobile.png',Buffer.from((await cdp('Page.captureScreenshot',{format:'png'})).data,'base64'));
+  await evaluate("[...document.querySelectorAll('[aria-label=\"Calling consultation\"] button')].find(b=>b.textContent==='Cancel').click()");
+  await wait("!document.querySelector('[aria-label=\"Calling consultation\"]')");
+  await wait("[...document.querySelectorAll('label')].find(l=>l.textContent==='Group Created')?.querySelector('input:not(:disabled)')");
+  await evaluate("[...document.querySelectorAll('label')].find(l=>l.textContent==='Group Created').querySelector('input').click()");
+  await wait("[...document.querySelectorAll('button')].some(b=>b.textContent==='Apply')");
+  assert.equal((await db.lead.findUniqueOrThrow({where:{id:lead.id}})).whatsapp_group_created,false,'Toggle alone must not persist');
+  await evaluate("[...document.querySelectorAll('button')].find(b=>b.textContent==='Apply').click()");
+  await wait("![...document.querySelectorAll('button')].some(b=>b.textContent==='Apply' || b.textContent==='Applying…')");
+  assert.equal((await db.lead.findUniqueOrThrow({where:{id:lead.id}})).whatsapp_group_created,true);
+  console.log('PASS: mobile calling form Yes/No branches, no ground fields, and group persists only after Apply.');
+ }
+ await db.lead.update({where:{id:lead.id},data:{status:'Closed-Lost'}});
+ assert.equal((await api(path+'/calling-consultation',caller,{call_picked:false})).status,409);
+ console.log('PASS: answered call, unanswered next-day retry, preserved interest, caller follow-up ownership, group apply/conflict, permissions and closed-lead guard.');
+} finally {
+ ws?.close(); chrome?.kill();
+ if(server) server.kill('SIGTERM');
+ if(ids.length) {
+  await db.workflowNotification.deleteMany({where:{lead_id:{in:ids}}});
+  await db.coldLeadCase.deleteMany({where:{lead_id:{in:ids}}});
+  await db.followUp.deleteMany({where:{lead_id:{in:ids}}});
+  await db.callLog.deleteMany({where:{lead_id:{in:ids}}});
+  await db.activityLog.deleteMany({where:{lead_id:{in:ids}}});
+  await db.consultation.deleteMany({where:{lead_id:{in:ids}}});
+  await db.lead.deleteMany({where:{id:{in:ids}}});
+ }
+ await db.$disconnect();
+}

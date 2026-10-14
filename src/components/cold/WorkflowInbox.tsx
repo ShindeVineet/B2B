@@ -60,11 +60,9 @@ export function WorkflowInbox({
     const reload = () => void load().catch(() => {});
     window.addEventListener("followups-updated", reload);
     reload();
-    const timer = setInterval(() => void load().catch(() => {}), 30000);
     return () => {
       window.removeEventListener("followups-updated", reload);
       active = false;
-      clearInterval(timer);
     };
   }, [followups, team]);
   return (

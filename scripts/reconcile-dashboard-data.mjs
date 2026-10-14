@@ -33,10 +33,11 @@ try {
   const row=rows[i],key=signature(row,true),candidates=bySig.get(key)||[], date=workbookDate('Consultations',row,1);
   if(candidates.length!==1 || sourceCounts.get(key)!==1 || !date){exceptions.push({sheet:'Consultations',row:i+2,lead:row.Lead_ID,reason:!date?'Invalid timestamp':'Non-unique exact match'});continue;}
   const c=candidates[0]; if(c.responses?.dashboard_reconciliation?.sha256===hash && +new Date(c.visit_date)===+date)continue;
-  const executive=users.filter(u=>u.name===row['Name of Ground Executive'].trim());
+  const executiveName = row['Name of Ground Executive'].trim();
+  const executive=users.filter(u=>executiveName.toLowerCase()==='vineet' ? u.role==='b2b_head' && u.name==='Vineet Shinde' : u.name===executiveName);
   if(executive.length!==1){exceptions.push({sheet:'Consultations',row:i+2,lead:row.Lead_ID,reason:'Unknown/ambiguous executive'});continue;}
   const interest=String(row['Interest Level']).trim().toLowerCase();
-  const data={visit_date:date,created_at:date,ground_staff_name:row['Name of Ground Executive'],rep_id:executive[0].id,interest_level:({high:'High',medium:'Medium',low:'Low'})[interest]||c.interest_level,interaction_channel:teams.get(row.Lead_ID)||'ground',email:row.Email||null,responses:{...(c.responses||{}),dashboard_reconciliation:{sha256:hash,sheet:'Consultations',row:i+2,raw:row}}};
+  const data={visit_date:date,created_at:date,ground_staff_name:executive[0].name,rep_id:executive[0].id,interest_level:({high:'High',medium:'Medium',low:'Low'})[interest]||c.interest_level,interaction_channel:teams.get(row.Lead_ID)||'ground',email:row.Email||null,responses:{...(c.responses||{}),dashboard_reconciliation:{sha256:hash,sheet:'Consultations',row:i+2,raw:row}}};
   changes.push({model:'consultation',id:c.id,lead_id:c.lead_id,data,before:c});
  }
  // Restore source-sheet handling queues without changing immutable origins or assigning people by inference.
