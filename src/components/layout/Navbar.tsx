@@ -36,7 +36,7 @@ export function Navbar() {
 
   const [counts, setCounts] = useState<Record<string, number>>({});
   useEffect(() => {
-    if (!user || user.role === "ground_rep") return;
+    if (!user || ["ground_rep", "store_associate"].includes(user.role)) return;
     const refresh = () => {
       if (document.visibilityState === "hidden") return Promise.resolve();
       return (
@@ -65,13 +65,13 @@ export function Navbar() {
 
   const navItems = [
     { name: "Route Builder", href: "/route-planner", icon: Compass, roles: ["super_admin", "b2b_head", "regional_manager"] },
-    { name: "Warm Leads", href: "/warm-leads", icon: Users, roles: ["super_admin", "b2b_head","regional_manager","ground_rep","store_associate","analyst"] },
+    { name: "Warm Leads", href: "/warm-leads", icon: Users, roles: ["super_admin", "b2b_head","regional_manager","ground_rep","analyst"] },
     { name: "New lead", href: "/leads/new", icon: Users, roles: ["super_admin", "b2b_head", "regional_manager", "store_associate"] },
     {
       name: "Import walk-in lead",
       href: "/walk-in",
       icon: Users,
-      roles: ["super_admin", "store_associate", "regional_manager", "b2b_head"],
+      roles: ["super_admin", "regional_manager", "b2b_head"],
     },
     {
       name: "Data Issues",
@@ -108,13 +108,13 @@ export function Navbar() {
       name: "Mapping Issues",
       href: "/mapping-issues",
       icon: MapPin,
-      roles: ["super_admin", "b2b_head", "regional_manager", "store_associate", "analyst"],
+      roles: ["super_admin", "b2b_head", "regional_manager", "analyst"],
     },
     {
       name: "Cold Leads",
       href: "/cold-leads",
       icon: Snowflake,
-      roles: ["super_admin", "b2b_head", "regional_manager", "store_associate", "analyst"],
+      roles: ["super_admin", "b2b_head", "regional_manager", "analyst"],
     },
     {
       name: "Dashboard",
@@ -126,7 +126,7 @@ export function Navbar() {
       name: "Map View",
       href: "/map",
       icon: MapPin,
-      roles: ["super_admin", "b2b_head", "regional_manager", "store_associate", "analyst"],
+      roles: ["super_admin", "b2b_head", "regional_manager", "analyst"],
     },
     {
       name: "Leads Funnel",
@@ -185,7 +185,7 @@ export function Navbar() {
     role === "ground_rep"
       ? ["/rep-portal", "/warm-leads", "/partners"]
       : role === "store_associate"
-        ? ["/dashboard", "/calling", "/walk-in", "/warm-leads", "/partners"]
+        ? ["/dashboard", "/calling", "/partners"]
         : ["/dashboard", "/leads", "/warm-leads", "/map", "/calling"];
   const primaryNav = primaryPaths.flatMap((path) =>
     filteredNav.filter((item) => item.href === path),
