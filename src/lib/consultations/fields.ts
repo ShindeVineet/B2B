@@ -79,7 +79,7 @@ export const CONSULTATION_FIELDS: FieldDefinition[] = [
   {
     key: "primary_pain_point",
     label: "Primary Pain Point Observed",
-    type: "select",
+    type: "multi_select",
     required: false,
     options: [
       "Delivery delay",
@@ -94,7 +94,7 @@ export const CONSULTATION_FIELDS: FieldDefinition[] = [
   {
     key: "competitor_involved",
     label: "Competitor Involved",
-    type: "select",
+    type: "multi_select",
     required: false,
     options: [
       "Kajaria",

@@ -106,3 +106,24 @@ test("optional alternate mobile validates and persists separately",()=>{
  assert.equal(validateResponses(CONSULTATION_FIELDS,{...raw,alternate_mobile_number:"+91 9876543210"},"Rep",false).alternate_mobile_number,"+91 9876543210");
  assert.throws(()=>validateResponses(CONSULTATION_FIELDS,{...raw,alternate_mobile_number:"abc"},"Rep",false));
 });
+
+test("pain points and competitors accept multiple known selections", () => {
+  const result = validateResponses(
+    CONSULTATION_FIELDS,
+    {
+      ...raw,
+      primary_pain_point: ["Delivery delay", "High price"],
+      competitor_involved: ["Kajaria", "Somany"],
+    },
+    "Rep",
+    false,
+  );
+  assert.deepEqual(result.primary_pain_point, ["Delivery delay", "High price"]);
+  assert.deepEqual(result.competitor_involved, ["Kajaria", "Somany"]);
+  assert.throws(() => validateResponses(
+    CONSULTATION_FIELDS,
+    { ...raw, competitor_involved: ["Unknown competitor"] },
+    "Rep",
+    false,
+  ));
+});

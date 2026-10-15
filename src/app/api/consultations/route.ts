@@ -172,6 +172,9 @@ export async function POST(req: NextRequest) {
     const responses = validateResponses(
       definitions.map((f) => ({
         ...f,
+        type: ["primary_pain_point", "competitor_involved"].includes(f.key)
+          ? "multi_select"
+          : f.type,
         max_files: f.max_files ?? undefined,
         options: Array.isArray(f.options) ? (f.options as string[]) : undefined,
         required: f.key === "next_follow_up_date" ? false : f.required,
@@ -183,6 +186,8 @@ export async function POST(req: NextRequest) {
     );
     const text = (key: string) =>
       typeof responses[key] === "string" ? (responses[key] as string) : "";
+    const multiText = (key: string) =>
+      Array.isArray(responses[key]) ? (responses[key] as string[]).join(", ") : text(key);
     const photos = [
       ...((responses.site_photos as string[]) || []),
       ...((responses.visiting_card_photos as string[]) || []),
@@ -241,8 +246,8 @@ export async function POST(req: NextRequest) {
           current_lead_status: text("current_lead_status"),
           outcome,
           visit_date: new Date(text("visit_date") + "T12:00:00+05:30"),
-          primary_pain_point: text("primary_pain_point") || null,
-          competitor_involved: text("competitor_involved") || null,
+          primary_pain_point: multiText("primary_pain_point") || null,
+          competitor_involved: multiText("competitor_involved") || null,
           site_photos: responses.site_photos || [],
           visiting_card_photos: responses.visiting_card_photos || [],
           checklist: responses.checklist || [],

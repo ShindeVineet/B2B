@@ -102,7 +102,7 @@ function ConsultationForm({
   if (mode === "calling" && allowed) return <CallingConsultationModal key={lead.id} leadId={lead.id} onClose={onClose} onSuccess={onSuccess} />;
   const set = (key: string, value: string | string[]) =>
     setValues((v) => ({ ...v, [key]: value }));
-  async function upload(field: FieldDefinition, files: FileList | null) {
+  async function upload(field: FieldDefinition, files: FileList | File[] | null) {
     if (!files?.length) return;
     const current = Array.isArray(values[field.key])
       ? (values[field.key] as string[])

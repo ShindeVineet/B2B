@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { WarmLeads } from "@/components/leads/WarmLeads";
 import { ColdLeads } from "@/components/cold/ColdLeads";
+import { DailyReport } from "./DailyReport";
 import { StoreVisits } from "./StoreVisits";
 import type { dashboardOverview } from "@/lib/dashboard/service";
 type Overview = Awaited<ReturnType<typeof dashboardOverview>>;
@@ -12,8 +13,8 @@ export function RoleDashboard({ role }: { role: string }) {
   useEffect(() => { let live = true; fetch("/api/dashboard/overview").then(async r => { const d = await r.json(); if (!r.ok) throw Error(d.error); if (live) setData(d); }).catch(e => { if (live) setError(e.message); }); return () => { live = false; }; }, []);
   return <div className="space-y-5">
     {role === "b2b_head" && <Link href="/route-planner" prefetch={false} className="inline-flex rounded-lg bg-[#ff4500] text-white px-4 py-3 font-semibold">Open Route Builder</Link>}
-    <nav className="flex gap-2 flex-wrap" aria-label="Dashboard views">{["Overview", "Warm Leads", ...(associate ? ["Cold Leads"] : []), "Visits Today"].map(t => <button key={t} onClick={() => setTab(t)} aria-current={tab === t ? "page" : undefined} className={`rounded-lg border px-4 py-2 text-sm font-semibold ${tab === t ? "bg-[#ff4500] text-white border-[#ff4500]" : "bg-white border-slate-200"}`}>{t}</button>)}</nav>
-    {tab === "Warm Leads" ? <WarmLeads /> : tab === "Cold Leads" ? <ColdLeads /> : tab === "Visits Today" ? <StoreVisits today receiving={associate} /> : <>
+    <nav className="flex gap-2 flex-wrap" aria-label="Dashboard views">{["Overview", ...(role === "b2b_head" ? ["Daily Report"] : []), "Warm Leads", ...(associate ? ["Cold Leads"] : []), "Visits Today"].map(t => <button key={t} onClick={() => setTab(t)} aria-current={tab === t ? "page" : undefined} className={`rounded-lg border px-4 py-2 text-sm font-semibold ${tab === t ? "bg-[#ff4500] text-white border-[#ff4500]" : "bg-white border-slate-200"}`}>{t}</button>)}</nav>
+    {tab === "Daily Report" ? <DailyReport /> : tab === "Warm Leads" ? <WarmLeads /> : tab === "Cold Leads" ? <ColdLeads /> : tab === "Visits Today" ? <StoreVisits today receiving={associate} /> : <>
       {error && <p role="alert" className="text-red-700">{error}</p>}
       {!data && !error && <p>Loading dashboard…</p>}
       {associate && <div className="flex flex-wrap gap-2"><Link href="/calling" className="rounded-lg bg-[#ff4500] px-3 py-1.5 text-xs font-semibold text-white">Open calling queue</Link><Link href="/leads/new?source=Walk-in" className="rounded-lg border border-[#ff4500] bg-white px-3 py-1.5 text-xs font-semibold text-[#ff4500]">Import walk-in lead</Link></div>}
