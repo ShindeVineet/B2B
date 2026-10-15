@@ -86,21 +86,6 @@ export async function PATCH(
         if (b.action === "assign") {
           if (!["draft", "ready"].includes(route.status))
             throw new RequestError("This route is already assigned");
-          const batch = await tx.plannedRoute.findMany({
-            where: { batch_id: route.batch_id },
-            select: { remainder_lead_ids: true },
-          });
-          if (
-            batch.some(
-              (r) =>
-                Array.isArray(r.remainder_lead_ids) &&
-                r.remainder_lead_ids.length,
-            )
-          )
-            throw new RequestError(
-              "Place the remaining leads or choose Leave unassigned before assigning",
-              409,
-            );
           if (b.confirm !== true && b.rep_id)
             throw new RequestError("Confirm the route assignment", 409);
           const date = dateOnly(b.date);
@@ -125,6 +110,13 @@ export async function PATCH(
             throw new RequestError(
               "No pending stops to assign; completed visits remain read-only",
             );
+          // Leads outside the saved route stay available in the route pool by
+          // default. Clearing the batch marker records that decision without
+          // assigning or otherwise changing those leads.
+          await tx.plannedRoute.updateMany({
+            where: { batch_id: route.batch_id },
+            data: { remainder_lead_ids: [] },
+          });
           const calendar = b.rep_id
             ? await createRouteCalendar(tx, u, {
                 rep_id: b.rep_id,

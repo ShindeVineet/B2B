@@ -7,7 +7,12 @@ import { canUserManageLeads, getLeadFilterForUser } from "@/lib/permissions";
 import { failure, RequestError } from "@/lib/phase5/http";
 import { leadEligibility, assertEligible } from "@/lib/routes/pool";
 import { buildRouteBatch, routeLetter } from "@/lib/routes/geometry";
-import { saveGeometry, routeInclude, assertScoped } from "@/lib/routes/service";
+import {
+  saveGeometry,
+  routeById,
+  routeInclude,
+  assertScoped,
+} from "@/lib/routes/service";
 import {
   routeDistance,
   type ClusterLead,
@@ -235,6 +240,44 @@ export async function POST(req: NextRequest) {
       { timeout: 120000, isolationLevel: "Serializable" },
     );
     return NextResponse.json(result);
+  } catch (e) {
+    return failure(e);
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const user = await getCurrentUser(req);
+    if (!user || !canUserManageLeads(user))
+      throw new RequestError("Forbidden", 403);
+    const body = await req.json();
+    const ids: string[] = Array.isArray(body.ids)
+      ? [
+          ...new Set<string>(
+            (body.ids as unknown[]).filter(
+              (id): id is string => typeof id === "string" && id.length > 0,
+            ),
+          ),
+        ]
+      : [];
+    if (!ids.length || ids.length > 500)
+      throw new RequestError("Select between 1 and 500 routes to delete");
+
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(928059)`;
+      const routes = await Promise.all(ids.map((id) => routeById(tx, id, user)));
+      const blocked = routes.find(
+        (route) =>
+          !["draft", "ready"].includes(route.status) || route.visits.length > 0,
+      );
+      if (blocked)
+        throw new RequestError(
+          `${blocked.name} cannot be deleted. Only unassigned routes without visit history may be deleted.`,
+          409,
+        );
+      await tx.plannedRoute.deleteMany({ where: { id: { in: ids } } });
+    });
+    return NextResponse.json({ success: true, deleted: ids.length });
   } catch (e) {
     return failure(e);
   }

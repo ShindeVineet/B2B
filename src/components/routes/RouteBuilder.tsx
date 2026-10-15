@@ -95,6 +95,9 @@ export function RouteBuilder() {
   const [generationError, setGenerationError] = useState("");
   const [showAssignedOnMap, setShowAssignedOnMap] = useState(false);
   const [remainderLeads, setRemainderLeads] = useState<Lead[]>([]);
+  const [selectedRouteIds, setSelectedRouteIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [preview, setPreview] = useState<Preview | null>(null),
     [previewIndex, setPreviewIndex] = useState(0),
     [selection, setSelection] = useState<Set<string>>(new Set()),
@@ -259,7 +262,7 @@ export function RouteBuilder() {
         setActive(d.ids[0]);
         setPreview(null);
         setNotice(
-          "Route saved. Choose a team member and date below to assign it. Resolve any remaining leads first.",
+          "Route saved. Leads outside the saved route remain unassigned and available for another route.",
         );
       }
     });
@@ -289,6 +292,27 @@ export function RouteBuilder() {
     message: string,
   ) {
     setConfirm({ route: r, body, message });
+  }
+  async function deleteSelectedRoutes() {
+    if (!selectedRouteIds.size) return;
+    if (
+      !window.confirm(
+        `Delete ${selectedRouteIds.size} selected route map${selectedRouteIds.size === 1 ? "" : "s"} and release their reserved leads?`,
+      )
+    )
+      return;
+    await run(async () => {
+      const deleted = selectedRouteIds.size;
+      await api(
+        "/api/route-plans",
+        { ids: [...selectedRouteIds] },
+        "DELETE",
+      );
+      setSelectedRouteIds(new Set());
+      if (selectedRouteIds.has(active)) setActive("");
+      await refresh();
+      setNotice(`${deleted} route map${deleted === 1 ? "" : "s"} deleted.`);
+    });
   }
   useEffect(() => {
     if (!current?.remainder_lead_ids?.length) {
@@ -771,6 +795,26 @@ export function RouteBuilder() {
                   {preview.before.toFixed(2)} → {preview.after.toFixed(2)} km).
                 </p>
               )}
+              {!!preview.remainder.length && (
+                <label className="block text-sm font-semibold">
+                  Unassigned leads ({preview.remainder.length})
+                  <textarea
+                    className="mt-1 block h-20 w-full resize-y rounded-lg border bg-slate-50 p-2 text-xs font-normal"
+                    readOnly
+                    value={preview.remainder
+                      .map((id) => {
+                        const lead = pool.find((row) => row.id === id);
+                        return lead
+                          ? `${lead.lead_code} · ${lead.company_name}`
+                          : id;
+                      })
+                      .join("\n")}
+                  />
+                  <span className="mt-1 block font-normal text-slate-500">
+                    These leads stay unassigned by default and remain available for future routes.
+                  </span>
+                </label>
+              )}
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 max-h-[440px] overflow-y-auto p-1">
                 {preview.routes.map((r, i) => (
                   <RoutePreviewCard
@@ -820,6 +864,15 @@ export function RouteBuilder() {
             )}
           </select>
           <button onClick={() => void run(refresh)}>Refresh</button>
+          {routeTab === "planning" && selectedRouteIds.size > 0 && (
+            <button
+              className="border-red-300 text-red-700"
+              disabled={busy}
+              onClick={() => void deleteSelectedRoutes()}
+            >
+              <Trash2 className="inline w-4" /> Delete selected ({selectedRouteIds.size})
+            </button>
+          )}
         </div>
         <p className="text-sm text-slate-500">
           Select a card to review its stops on the map. Distances are
@@ -834,30 +887,49 @@ export function RouteBuilder() {
             )
             .filter((r) => !status || r.status === status)
             .map((r) => (
-              <RoutePreviewCard
-                key={r.id}
-                name={r.name}
-                status={r.status}
-                points={r.leads.map((m) => ({
-                  lat: m.lead.lat,
-                  lng: m.lead.lng,
-                }))}
-                distance={r.total_distance_km}
-                remainder={r.remainder_lead_ids?.length || 0}
-                selected={active === r.id}
-                onSelect={() => {
-                  setActive(r.id);
-                  setPreview(null);
-                  setTarget("");
-                  setRepId("");
+              <div className="relative" key={r.id}>
+                {routeTab === "planning" && (
+                  <label className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-md border bg-white px-2 py-1 text-xs font-semibold shadow-sm">
+                    <input
+                      aria-label={`Select ${r.name} for deletion`}
+                      type="checkbox"
+                      checked={selectedRouteIds.has(r.id)}
+                      onChange={(event) =>
+                        setSelectedRouteIds((currentIds) => {
+                          const next = new Set(currentIds);
+                          if (event.target.checked) next.add(r.id);
+                          else next.delete(r.id);
+                          return next;
+                        })
+                      }
+                    />
+                    Select
+                  </label>
+                )}
+                <RoutePreviewCard
+                  name={r.name}
+                  status={r.status}
+                  points={r.leads.map((m) => ({
+                    lat: m.lead.lat,
+                    lng: m.lead.lng,
+                  }))}
+                  distance={r.total_distance_km}
+                  remainder={r.remainder_lead_ids?.length || 0}
+                  selected={active === r.id}
+                  onSelect={() => {
+                    setActive(r.id);
+                    setPreview(null);
+                    setTarget("");
+                    setRepId("");
 
-                  requestAnimationFrame(() =>
-                    document
-                      .getElementById("route-map-review")
-                      ?.scrollIntoView({ behavior: "smooth", block: "start" }),
-                  );
-                }}
-              />
+                    requestAnimationFrame(() =>
+                      document
+                        .getElementById("route-map-review")
+                        ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+                    );
+                  }}
+                />
+              </div>
             ))}
         </div>
         {!routes.some((r) => !status || r.status === status) && (
@@ -1063,17 +1135,21 @@ export function RouteBuilder() {
               {!!current.remainder_lead_ids?.length && (
                 <div className="p-4 rounded-xl border border-amber-400 bg-amber-50 space-y-3">
                   <h3 className="font-bold">
-                    {current.remainder_lead_ids.length} remainder leads need a
-                    decision
+                    {current.remainder_lead_ids.length} unassigned leads
                   </h3>
-                  <p>
-                    {current.remainder_lead_ids
-                      .map(
-                        (id) =>
-                          remainderLeads.find((l) => l.id === id)
-                            ?.company_name || id,
-                      )
-                      .join(", ")}
+                  <textarea
+                    aria-label="Unassigned leads"
+                    className="block h-20 w-full resize-y rounded-lg border bg-white p-2 text-xs"
+                    readOnly
+                    value={current.remainder_lead_ids
+                      .map((id) => {
+                        const lead = remainderLeads.find((row) => row.id === id);
+                        return lead ? `${lead.lead_code} · ${lead.company_name}` : id;
+                      })
+                      .join("\n")}
+                  />
+                  <p className="text-sm text-slate-700">
+                    They will stay unassigned by default when this route is assigned.
                   </p>
                   <select
                     value={target}
