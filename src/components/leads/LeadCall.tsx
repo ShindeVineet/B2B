@@ -13,10 +13,12 @@ export function LeadCall({
   leadId,
   className,
   showHistory = false,
+  onSuccess,
 }: {
   leadId: string;
   className?: string;
   showHistory?: boolean;
+  onSuccess?: () => void;
   children?: React.ReactNode;
 }) {
   const [history, setHistory] = useState(false);
@@ -24,7 +26,7 @@ export function LeadCall({
   return <span onMouseDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
     <button type="button" className={className} onClick={() => setOpen(true)}>Log a call</button>
     {showHistory && <button type="button" className="ml-2 text-xs" onClick={() => setHistory(true)}>Call log</button>}
-    {open && <CallingConsultationModal leadId={leadId} onClose={() => setOpen(false)} />}
+    {open && <CallingConsultationModal leadId={leadId} onClose={() => setOpen(false)} onSuccess={onSuccess} />}
     {history && <DialogOverlay aria-label="Call log" className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4"><section className="bg-white border rounded-xl p-5 w-full max-w-lg space-y-3"><div className="flex justify-between"><h2 className="font-bold">Call log</h2><button type="button" onClick={() => setHistory(false)}>Close</button></div><CallHistory leadId={leadId} /></section></DialogOverlay>}
   </span>;
 }
