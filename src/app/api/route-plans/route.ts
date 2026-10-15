@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { canUserManageLeads, getLeadFilterForUser } from "@/lib/permissions";
 import { failure, RequestError } from "@/lib/phase5/http";
 import { leadEligibility, assertEligible } from "@/lib/routes/pool";
-import { buildRouteBatch, routeLetter } from "@/lib/routes/geometry";
+import { buildRouteBatch } from "@/lib/routes/geometry";
 import {
   saveGeometry,
   routeById,
@@ -205,20 +205,20 @@ export async function POST(req: NextRequest) {
           batch.after = saved.reduce((sum, r) => sum + routeDistance(r), 0);
         }
         if (b.preview) return { ...batch, preview: true };
+        const collectionName =
+          typeof b.collection_name === "string" ? b.collection_name.trim() : "";
+        if (!collectionName)
+          throw new RequestError("Draft collection name is required");
+        if (collectionName.length > 80)
+          throw new RequestError("Draft collection name must be 80 characters or fewer");
         const batchId = randomUUID();
         const ids: string[] = [];
-        const area = String(
-          b.area_filter.label ||
-            b.area_filter.pincode ||
-            b.area_filter.region ||
-            "Selected area",
-        ).slice(0, 100);
         // Empty holding route retains a remainder when pool size < N.
         const groups = batch.routes.length ? batch.routes : [[]];
         for (const [i, stops] of groups.entries()) {
           const route = await tx.plannedRoute.create({
             data: {
-              name: `${area} Route ${routeLetter(i)}`,
+              name: `${collectionName} ${i + 1}`,
               area_filter: b.area_filter,
               target_count: b.leads_per_route,
               created_by: user.id,

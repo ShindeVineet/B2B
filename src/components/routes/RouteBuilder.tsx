@@ -84,7 +84,8 @@ export function RouteBuilder() {
     [store, setStore] = useState(""),
     [n, setN] = useState(10),
     [k, setK] = useState(""),
-    [batch, setBatch] = useState(false);
+    [batch, setBatch] = useState(false),
+    [draftCollectionName, setDraftCollectionName] = useState("");
   const [bounds, setBounds] = useState<{
     south: number;
     north: number;
@@ -217,6 +218,15 @@ export function RouteBuilder() {
       "Selected area",
   };
   async function generate(save = false) {
+    const collectionName = draftCollectionName.trim();
+    if (save && !collectionName) {
+      setGenerationError("Enter a draft collection name before saving.");
+      return;
+    }
+    if (save && collectionName.length > 80) {
+      setGenerationError("Draft collection name must be 80 characters or fewer.");
+      return;
+    }
     const routesRequested = batch
       ? k === ""
         ? Math.floor(selection.size / n)
@@ -252,6 +262,7 @@ export function RouteBuilder() {
           ? {
               expected_routes: preview.routes,
               expected_remainder: preview.remainder,
+              collection_name: collectionName,
             }
           : {}),
       });
@@ -261,6 +272,7 @@ export function RouteBuilder() {
         await refresh();
         setActive(d.ids[0]);
         setPreview(null);
+        setDraftCollectionName("");
         setNotice(
           "Route saved. Leads outside the saved route remain unassigned and available for another route.",
         );
@@ -819,7 +831,7 @@ export function RouteBuilder() {
                 {preview.routes.map((r, i) => (
                   <RoutePreviewCard
                     key={i}
-                    name={`${area.label} Route ${i + 1}`}
+                    name={`${draftCollectionName.trim() || "Draft collection"} ${i + 1}`}
                     status="Preview"
                     points={r}
                     distance={routeDistance(r)}
@@ -836,9 +848,28 @@ export function RouteBuilder() {
                   />
                 ))}
               </div>
-              <button disabled={busy} onClick={() => void generate(true)}>
-                <Plus className="inline w-4" /> Save batch as Draft
-              </button>
+              <div className="max-w-lg rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                <label className="block text-sm font-semibold">
+                  Draft collection name <span className="text-red-600">*</span>
+                  <input
+                    className="mt-1 block w-full"
+                    required
+                    maxLength={80}
+                    placeholder="Example: South Mumbai October"
+                    value={draftCollectionName}
+                    onChange={(event) => {
+                      setDraftCollectionName(event.target.value);
+                      setGenerationError("");
+                    }}
+                  />
+                </label>
+                <p className="text-xs text-slate-500">
+                  Routes will be named {draftCollectionName.trim() || "Collection name"} 1, {draftCollectionName.trim() || "Collection name"} 2, and so on.
+                </p>
+                <button disabled={busy || !draftCollectionName.trim()} onClick={() => void generate(true)}>
+                  <Plus className="inline w-4" /> Save batch as Draft
+                </button>
+              </div>
             </div>
           )}
         </section>
@@ -887,9 +918,9 @@ export function RouteBuilder() {
             )
             .filter((r) => !status || r.status === status)
             .map((r) => (
-              <div className="relative" key={r.id}>
+              <div className="space-y-2" key={r.id}>
                 {routeTab === "planning" && (
-                  <label className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-md border bg-white px-2 py-1 text-xs font-semibold shadow-sm">
+                  <label className="flex w-fit items-center gap-1 rounded-md border bg-white px-2 py-1 text-xs font-semibold shadow-sm">
                     <input
                       aria-label={`Select ${r.name} for deletion`}
                       type="checkbox"
