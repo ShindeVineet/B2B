@@ -9,6 +9,7 @@ export function CallingConsultationModal({ leadId, onClose, onSuccess }: { leadI
   const [date, setDate] = useState('');
   const [follow, setFollow] = useState(false);
   const [group, setGroup] = useState(false);
+  const [notes, setNotes] = useState('');
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -26,7 +27,7 @@ export function CallingConsultationModal({ leadId, onClose, onSuccess }: { leadI
       e.preventDefault(); if (picked === null) return;
       setBusy(true); setError('');
       try {
-        const r = await fetch(`/api/leads/${leadId}/calling-consultation`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ call_picked: picked, ...(picked ? { interest_level: interest, next_follow_up_date: follow ? date : null, whatsapp_group_created: group } : {}) }) });
+        const r = await fetch(`/api/leads/${leadId}/calling-consultation`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ call_picked: picked, notes, ...(picked ? { interest_level: interest, next_follow_up_date: follow ? date : null, whatsapp_group_created: group } : {}) }) });
         const d = await r.json(); if (!r.ok) throw Error(d.error);
         window.dispatchEvent(new CustomEvent('lead-contact-updated', { detail: { leadId, date: d.call.created_at } }));
         window.dispatchEvent(new CustomEvent('lead-group-updated', { detail: { leadId } }));
@@ -45,6 +46,7 @@ export function CallingConsultationModal({ leadId, onClose, onSuccess }: { leadI
           <label className="flex gap-2 items-center text-sm"><input type="checkbox" checked={group} onChange={e => setGroup(e.target.checked)} />Group Created</label>
         </>}
         {picked === false && <p role="status" className="text-sm rounded-lg bg-orange-50 p-3">A follow-up will be scheduled automatically for tomorrow, {addDays(todayIndia(), 1)} (IST), when you save.</p>}
+        <label className="block text-sm font-semibold">Notes *<textarea required maxLength={10000} value={notes} onChange={e => setNotes(e.target.value)} className="block w-full border rounded-lg p-3 mt-1" rows={4} /></label>
       </fieldset>
       {error && <p role="alert" className="text-red-700">{error}</p>}
       {!ready && !error && <p>Loading…</p>}
