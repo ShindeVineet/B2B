@@ -197,7 +197,19 @@ function ConsultationForm({
           }}
         >
           <OriginalLead leadId={lead.id} />
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" role="switch" checked={values.direct_store_meeting === "true"} onChange={e => set("direct_store_meeting", String(e.target.checked))} />Direct meeting with partner in store</label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              role="switch"
+              checked={values.direct_store_meeting === "true"}
+              onChange={(e) =>
+                set("direct_store_meeting", String(e.target.checked))
+              }
+            />
+            {context === "ground"
+              ? "Direct meeting with decision maker at site/offsite"
+              : "Direct meeting with partner in store"}
+          </label>
           <StoreVisitFields values={values} onChange={set} force={values.outcome === "Visit scheduled"} />
           {!allowed && (
             <p role="alert">{error || "Checking visit eligibility…"}</p>
