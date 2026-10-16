@@ -10,7 +10,8 @@ export const LEAD_OUTCOMES = [
   "Nurturing required",
   "Dont want commission",
   "Lost Lead - (does not do tiles business)",
-  "Wrong Location/Office closed",
+  "Wrong location",
+  "Office closed",
 ];
 export const CHECKLIST = [
   "Florzy Pitched",

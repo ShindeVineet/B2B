@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
         OR: [
           { geocode_status: { in: ["mapping_issue" as const, "mismatch_flagged" as const, "invalid" as const] } },
           { status: "Needs Data Correction" },
+          { consultations: { some: { outcome: { equals: "Wrong location", mode: "insensitive" as const } } } },
           { consultations: { some: { outcome: { equals: "Wrong location/office closed", mode: "insensitive" as const } } } },
           { activity_logs: { some: { action: "FUNNEL_STATUS_UPDATED", new_value: "Needs Data Correction" } } },
         ],

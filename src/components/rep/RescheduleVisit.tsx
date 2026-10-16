@@ -53,12 +53,6 @@ export function RescheduleVisit({
       <button className="border rounded p-2 text-xs" onClick={() => show("")}>
         Reschedule
       </button>
-      <button
-        className="border rounded p-2 text-xs"
-        onClick={() => show("unreachable")}
-      >
-        Unreachable
-      </button>
       {message && (
         <span role="status" className="text-xs text-slate-600">
           {message}

@@ -14,6 +14,8 @@ test('active and pending onboarding take precedence over imported defaults',()=>
 test('lost, review, location and visit outcomes are represented explicitly',()=>{
  assert.equal(funnelStatus(lead('High','Lost Lead - (does not do tiles business)')),'Lost');
  assert.equal(funnelStatus(lead('High','Wrong Location/Office closed')),'Needs Data Correction');
+ assert.equal(funnelStatus(lead('High','Wrong location')),'Needs Data Correction');
+ assert.equal(funnelStatus(lead(null,'Office closed')),'Consulted');
  assert.equal(funnelStatus(lead('High','Dont want commission')),'Needs Manager Review');
  assert.equal(funnelStatus({...lead('Medium'),store_visits:[{status:'scheduled'}]}),'Visit Scheduled');
 });

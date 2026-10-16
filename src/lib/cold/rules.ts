@@ -11,6 +11,8 @@ export const DEFAULT_COLD_CONFIG: ColdConfig = {
 export const EXCLUDED_OUTCOMES = [
   "On-boarding Done",
   "Lost Lead - (does not do tiles business)",
+  "Wrong location",
+  "Office closed",
   "Wrong Location/Office closed",
 ];
 export function coldReasons(

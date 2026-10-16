@@ -16,7 +16,7 @@ import { StoreVisits } from "@/components/dashboard/StoreVisits";
 import { fetchAllMapLeads } from "@/lib/map-leads";
 import { latestByLead } from "@/lib/dashboard/metrics";
 import { todayIndia } from "@/lib/phase5/calendar";
-import { fullRouteLink, routeLinks, routeLinkStopCount } from "@/lib/route-links";
+import { fullRouteLink, routeLinks, routeLinkStopCount, validRoutePoint } from "@/lib/route-links";
 type Lead = CardLead & { lat?: number | null; lng?: number | null; store?: { lat?: number | null; lng?: number | null } | null; consultation_read_only?: boolean; consultation_visit_id?: string | null; trip_lead_id?: string; latest_consultation_outcome?: string | null };
 type Stop = { id: string; lead: Lead; completed: boolean; status: string; consultation?: unknown };
 export function GroundRepPortal({ memberId }: { memberId: string }) {
@@ -38,15 +38,17 @@ export function GroundRepPortal({ memberId }: { memberId: string }) {
   useEffect(()=>{const timer=setTimeout(()=>void load(),0);return()=>{clearTimeout(timer);invalidate();};},[load,invalidate]);
   const latest=latestByLead(records.map(c=>({...c,lead_id:c.lead.id})));
   let dayRouteLinks: string[] = [], dayRouteError = "";
+  const routeableStops = stops.filter((stop) => validRoutePoint(stop.lead));
+  const skippedRouteStops = stops.length - routeableStops.length;
   try {
     const origin = stops.find((stop) => stop.lead.store?.lat != null && stop.lead.store?.lng != null)?.lead.store;
-    dayRouteLinks = stops.length ? routeLinks(stops.map((stop) => stop.lead), origin || undefined) : [];
+    dayRouteLinks = routeableStops.length ? routeLinks(routeableStops.map((stop) => stop.lead), origin || undefined) : [];
   } catch (e) {
     dayRouteError = e instanceof Error ? e.message : "Unable to create the Google Maps route.";
   }
   const linkedStopCount = routeLinkStopCount(dayRouteLinks);
-  if (!dayRouteError && stops.length && linkedStopCount !== stops.length)
-    dayRouteError = `Only ${linkedStopCount} of ${stops.length} scheduled stops were included. Refresh the route before navigating.`;
+  if (!dayRouteError && routeableStops.length && linkedStopCount !== routeableStops.length)
+    dayRouteError = `Only ${linkedStopCount} of ${routeableStops.length} routeable stops were included. Refresh the route before navigating.`;
   const completeDayRoute = fullRouteLink(dayRouteLinks);
   const categories = ["Hot Leads", "Warm Leads", "Cold Leads", "Won"];
   const shown = leads.filter(l => (!categories.includes(tab) || interestBucket(l) === tab) && `${l.company_name} ${l.lead_code} ${l.phone_no} ${l.address}`.toLowerCase().includes(search.toLowerCase()));
@@ -77,6 +79,7 @@ export function GroundRepPortal({ memberId }: { memberId: string }) {
       {error&&<p role="alert" className="text-red-700">{error}</p>}
       {loading?<p role="status">Loading visits…</p>:tab==="Onboarding"?<RepOnboarding leads={leads}/>:tab==="Visits Today"?<StoreVisits today/>:tab==="My Visits"?<>
         <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">Scheduled visits · {date} · {stops.length}</h2>
+        {skippedRouteStops > 0 && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{skippedRouteStops} {skippedRouteStops === 1 ? "visit was" : "visits were"} excluded from navigation because the location needs correction. The remaining valid visits are available below.</p>}
         {dayRouteError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">Google Maps route unavailable: {dayRouteError}</p>}
         {!dayRouteError && completeDayRoute && <div><a href={completeDayRoute} target="_blank" rel="noreferrer" className="inline-flex rounded-xl bg-[#ff4500] px-4 py-2 text-xs font-bold text-white">Open complete route in Google Maps</a><p className="mt-1 text-xs text-emerald-700">Verified: all {linkedStopCount} scheduled stops are included.</p></div>}
         {!dayRouteError && !completeDayRoute && dayRouteLinks.length > 0 && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3"><p className="mb-2 text-xs text-amber-900">Google Maps limits the number of stops in one mobile route. All {linkedStopCount} scheduled stops are included across these connected parts. Open them in order.</p><div className="flex flex-wrap gap-2">{dayRouteLinks.map((href,index)=>{const first=index*4+1,last=Math.min((index+1)*4,linkedStopCount);return <a key={href} href={href} target="_blank" rel="noreferrer" className="rounded-lg bg-[#ff4500] px-3 py-2 text-xs font-bold text-white">Part {index+1}: stops {first}–{last}</a>;})}</div></div>}

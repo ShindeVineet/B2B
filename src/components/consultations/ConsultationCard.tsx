@@ -72,6 +72,8 @@ const outcomeColors: Record<string, string> = {
   "Nurturing required": "bg-amber-100 text-amber-800",
   "Dont want commission": "bg-purple-100 text-purple-800",
   "Lost Lead - (does not do tiles business)": "bg-gray-200 text-gray-800",
+  "Wrong location": "bg-red-100 text-red-800",
+  "Office closed": "bg-slate-100 text-slate-800",
   "Wrong Location/Office closed": "bg-red-100 text-red-800",
 };
 export function ConsultationCard({

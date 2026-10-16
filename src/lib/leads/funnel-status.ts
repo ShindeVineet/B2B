@@ -32,7 +32,7 @@ export function funnelStatus(lead: Input): FunnelStatus {
   if (lead.partners?.some(p => p.partner_status === "pending_review")) return "Onboarding Pending";
   const outcome = normalize(consultation?.outcome);
   if (outcome === "lost" || outcome === "closed-lost" || outcome.startsWith("lost lead")) return "Lost";
-  if (outcome === "wrong location/office closed") return "Needs Data Correction";
+  if (["wrong location", "wrong location/office closed"].includes(outcome)) return "Needs Data Correction";
   if (outcome === "dont want commission") return "Needs Manager Review";
   if (lead.store_visits?.some(v => v.status === "scheduled") || outcome === "visit scheduled") return "Visit Scheduled";
   if (outcome === "on-boarding done" || outcome === "converted") return "Ready for Onboarding";

@@ -213,6 +213,8 @@ export async function POST(req: NextRequest) {
       "Nurturing required": "Active — Nurturing",
       "Dont want commission": "Needs Manager Review",
       "Lost Lead - (does not do tiles business)": "Closed-Lost",
+      "Wrong location": "Needs Data Correction",
+      "Office closed": "Assigned",
       "Wrong Location/Office closed": "Needs Data Correction",
     };
     if (!status[outcome])
@@ -267,7 +269,7 @@ export async function POST(req: NextRequest) {
           outcome,
           call_outcome: outcome,
           assigned_visit_date: new Date(text("visit_date")),
-          ...(outcome === "Wrong Location/Office closed"
+          ...(["Wrong location", "Wrong Location/Office closed"].includes(outcome)
             ? {
                 geocode_status: "mapping_issue" as const,
                 geocode_issue_reason: "not_found",
@@ -301,7 +303,7 @@ export async function POST(req: NextRequest) {
           data: { completed: true, status: "visited" },
         });
       await evaluateCold(tx, updated, record);
-      if (outcome === "Wrong Location/Office closed")
+      if (["Wrong location", "Wrong Location/Office closed"].includes(outcome))
         await notifyWorkflow(
           tx,
           lead.id,
