@@ -33,8 +33,15 @@ type Lead = {
     actor: { name: string } | null;
   }[];
 };
-export default function Page({ params }: { params: Promise<{ id: string }> }) {
+export default function Page({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ context?: string }>;
+}) {
   const { id } = use(params),
+    { context } = use(searchParams),
     { user } = useAuth();
   const [consulting, setConsulting] = useState(false);
   const [lead, setLead] = useState<Lead | null>(null),
@@ -67,7 +74,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
           </h1>
           <p>{lead.address}</p>
           {user?.role !== "analyst" && <button className="bg-orange-600 text-white rounded px-3 py-2" onClick={() => setConsulting(true)}>Add consultation</button>}
-          <ConsultationModal lead={lead} isOpen={consulting} onClose={() => setConsulting(false)} onSuccess={() => location.reload()} />
+          <ConsultationModal lead={lead} context={context === "calling" ? "calling" : undefined} isOpen={consulting} onClose={() => setConsulting(false)} onSuccess={() => location.reload()} />
           <LeadCall leadId={id} />
           <LeadNavigate lead={lead} />
           <LeadPhones leadId={id} />

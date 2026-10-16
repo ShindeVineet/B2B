@@ -18,6 +18,15 @@ type Lead = {
   phone_no?: string | null;
 };
 export function ConsultationModal(props: Parameters<typeof ConsultationForm>[0]) {
+  if (props.isOpen && props.context === "calling") {
+    return (
+      <CallingConsultationModal
+        leadId={props.lead.id}
+        onClose={props.onClose}
+        onSuccess={props.onSuccess}
+      />
+    );
+  }
   return props.isOpen ? <ConsultationForm key={`${props.lead.id}:${props.lead.trip_lead_id || ""}:${props.context || ""}`} {...props} /> : null;
 }
 function ConsultationForm({
@@ -28,7 +37,7 @@ function ConsultationForm({
   context,
 }: {
   lead: Lead;
-  context?: "ground";
+  context?: "ground" | "calling";
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
