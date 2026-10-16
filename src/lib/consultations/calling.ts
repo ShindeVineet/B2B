@@ -6,10 +6,10 @@ export function callingFormFor(lead: { intake_team?: string | null; lead_source?
 
 export function parseCallingConsultation(raw: Record<string, unknown>, today = todayIndia()) {
   if (typeof raw.call_picked !== 'boolean') throw new RangeError('Choose Yes or No for Call Picked');
+  // An unanswered attempt must not replace interest or group state with hidden form values.
+  if (!raw.call_picked) return { picked: false as const, interest: null, followUp: addDays(today, 1), group: undefined, notes: 'No answer; follow-up scheduled for the next day' };
   if (typeof raw.notes !== 'string' || !raw.notes.trim() || raw.notes.length > 10000) throw new RangeError('Enter call notes (up to 10,000 characters)');
   const notes = raw.notes.trim();
-  // An unanswered attempt must not replace interest or group state with hidden form values.
-  if (!raw.call_picked) return { picked: false as const, interest: null, followUp: addDays(today, 1), group: undefined, notes };
   if (!['High', 'Medium', 'Low'].includes(String(raw.interest_level))) throw new RangeError('Choose a level of interest');
   if (typeof raw.whatsapp_group_created !== 'boolean') throw new RangeError('Choose Group Created');
   const followUp = raw.next_follow_up_date;
