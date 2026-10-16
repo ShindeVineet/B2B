@@ -18,6 +18,7 @@ test('explicit interaction and direct meetings override intake channel',()=>{
  assert.equal(channelFor({lead_source:'Google Maps',intake_team:'caller'}),'caller');
  assert.equal(channelFor({lead_source:'LinkedIn',direct_store_meeting:true}),'store');
  assert.equal(channelFor({lead_source:'Walk-in',interaction_channel:'ground'}),'ground');
+ assert.equal(channelFor({lead_source:'Walk-in',interaction_channel:'store',direct_store_meeting:true,rep_role:'ground_rep'}),'ground');
 });
 test('GST defaults partner classification and allows explicit override',()=>{
  assert.equal(partnerType('', 'GST123'),'Company');assert.equal(partnerType('', ''),'Individual');assert.equal(partnerType('Individual','GST123'),'Individual');assert.throws(()=>partnerType('other',''),RangeError);

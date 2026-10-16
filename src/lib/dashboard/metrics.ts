@@ -1,6 +1,10 @@
 export const CHANNELS = { ground: "Ground Team", store: "Store Walk-in", caller: "Inbound Calls", head: "Head / Other" } as const;
 export type Channel = keyof typeof CHANNELS;
 export function channelFor(input: { interaction_channel?: string | null; direct_store_meeting?: boolean; trip_lead_id?: string | null; lead_source?: string | null; intake_team?: string | null; rep_role?: string | null }): Channel {
+  // Authorship is authoritative for field consultations. A Ground Rep may
+  // visit a walk-in/calling-origin lead, but the completed consultation is
+  // still Ground Team work.
+  if (input.rep_role === "ground_rep") return "ground";
   if (input.interaction_channel && input.interaction_channel in CHANNELS) return input.interaction_channel as Channel;
   if (input.direct_store_meeting) return "store";
   if (input.trip_lead_id) return "ground";
@@ -8,7 +12,7 @@ export function channelFor(input: { interaction_channel?: string | null; direct_
   if (source === "walk-in") return "store";
   if (["cdt", "linkedin", "phone", "calling"].includes(source || "")) return "caller";
   if (input.intake_team && input.intake_team in CHANNELS) return input.intake_team as Channel;
-  return input.rep_role === "ground_rep" ? "ground" : "head";
+  return "head";
 }
 export function latestByLead<T extends { lead_id: string; visit_date: Date | string; created_at?: Date | string; id: string }>(rows: T[]) {
   const ordered = [...rows].sort((a, b) => new Date(b.visit_date).getTime() - new Date(a.visit_date).getTime() || new Date(b.created_at || b.visit_date).getTime() - new Date(a.created_at || a.visit_date).getTime() || b.id.localeCompare(a.id));
