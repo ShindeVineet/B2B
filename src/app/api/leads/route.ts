@@ -16,6 +16,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { getLeadFilterForUser, getStoreFilterForUser } from "@/lib/permissions";
 import { mapBusiness, mappingFields } from "@/lib/mapping/pipeline";
 import { Prisma } from "@prisma/client";
+import { parseCallingConsultation } from "@/lib/consultations/calling";
+import { evaluateCold } from "@/lib/cold/service";
 
 export async function GET(req: NextRequest) {
   try {
@@ -311,6 +313,18 @@ export async function POST(req: NextRequest) {
     if (body.gst_no != null && (typeof body.gst_no !== "string" || body.gst_no.length > 30)) throw new RequestError("Invalid GST number");
     const type = partnerType(body.partner_type, body.gst_no);
     const combined = ["Manual", "Walk-in"].includes(intake.lead_source);
+    const hasCallingConsultation =
+      intake.lead_source === "Phone" && body.calling_consultation != null;
+    if (
+      body.calling_consultation != null &&
+      intake.lead_source !== "Phone"
+    )
+      throw new RequestError(
+        "Calling consultations can only be added with Phone leads",
+      );
+    const callingConsultation = hasCallingConsultation
+      ? parseCallingConsultation(body.calling_consultation)
+      : null;
     if (combined && (!body.consultation || typeof body.consultation !== "object" || Array.isArray(body.consultation))) throw new RequestError("Save a consultation with this lead");
     const consultation = combined ? body.consultation : {};
     const visit = combined ? parseStoreVisit(consultation) : null;
@@ -418,6 +432,93 @@ export async function POST(req: NextRequest) {
         })),
       });
       if (intake.intake_team === "caller" || (intake.intake_team === "store" && !created.calling_associate_id)) await assignCaller(tx, created.id);
+      if (callingConsultation) {
+        const now = new Date();
+        const followUpDate = callingConsultation.followUp
+          ? new Date(callingConsultation.followUp)
+          : null;
+        const call = await tx.callLog.create({
+          data: {
+            lead_id: created.id,
+            actor_id: user.id,
+            outcome: callingConsultation.picked
+              ? "Call picked"
+              : "Call not picked",
+            notes: callingConsultation.notes,
+            next_follow_up_date: followUpDate,
+          },
+        });
+        const callingRecord = callingConsultation.picked
+          ? await tx.consultation.create({
+              data: {
+                lead_id: created.id,
+                rep_id: user.id,
+                interaction_channel: "caller",
+                visit_date: now,
+                company_name: intake.company_name || null,
+                decision_maker_name: intake.owner_name || null,
+                decision_maker_phone: numbers[0],
+                ground_staff_name: user.name,
+                interest_level: callingConsultation.interest,
+                outcome: "Nurturing required",
+                notes: callingConsultation.notes,
+                next_follow_up_date: followUpDate,
+                responses: {
+                  kind: "calling",
+                  call_picked: true,
+                  interest_level: callingConsultation.interest,
+                  next_follow_up_date: callingConsultation.followUp,
+                  whatsapp_group_created: callingConsultation.group!,
+                  notes: callingConsultation.notes,
+                },
+              },
+            })
+          : null;
+        const updatedLead = await tx.lead.update({
+          where: { id: created.id },
+          data: {
+            call_date: now,
+            call_outcome: call.outcome,
+            ...(callingConsultation.picked
+              ? {
+                  whatsapp_group_created: callingConsultation.group,
+                  status: "Active — Nurturing",
+                }
+              : {}),
+          },
+        });
+        if (followUpDate)
+          await tx.followUp.create({
+            data: {
+              lead_id: created.id,
+              rep_id: user.id,
+              due_date: followUpDate,
+            },
+          });
+        if (callingRecord)
+          await evaluateCold(tx, updatedLead, callingRecord);
+        await tx.activityLog.create({
+          data: {
+            lead_id: created.id,
+            actor_id: user.id,
+            action: callingConsultation.picked
+              ? "CALLING_CONSULTATION_LOGGED"
+              : "CALL_NOT_PICKED",
+            new_value: JSON.stringify({
+              call_id: call.id,
+              consultation_id: callingRecord?.id,
+              next_follow_up_date: callingConsultation.followUp,
+              notes: callingConsultation.notes,
+              ...(callingConsultation.picked
+                ? {
+                    interest_level: callingConsultation.interest,
+                    whatsapp_group_created: callingConsultation.group,
+                  }
+                : {}),
+            }),
+          },
+        });
+      }
       if (combined) {
         const record = await tx.consultation.create({ data: {
           lead_id: created.id, rep_id: user.id,
@@ -436,7 +537,7 @@ export async function POST(req: NextRequest) {
         await saveStoreVisit(tx, consultation, created.id, record.id);
         if (follow) await tx.followUp.create({ data: { lead_id: created.id, rep_id: user.id, due_date: new Date(follow) } });
       }
-      await tx.activityLog.create({ data: { lead_id: created.id, actor_id: user.id, action: "LEAD_CREATED", new_value: JSON.stringify({ source: intake.lead_source, team: intake.intake_team, consultation: combined }) } });
+      await tx.activityLog.create({ data: { lead_id: created.id, actor_id: user.id, action: "LEAD_CREATED", new_value: JSON.stringify({ source: intake.lead_source, team: intake.intake_team, consultation: combined || hasCallingConsultation }) } });
       return created;
     });
 
