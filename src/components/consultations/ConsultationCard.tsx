@@ -1,4 +1,6 @@
 "use client";
+import { ConsultationCallHistory } from './ConsultationCallHistory';
+import type { ConsultationCall } from '@/lib/consultations/call-history';
 import { GroupCreatedToggle } from "@/components/leads/GroupCreatedToggle";
 import { isWonLead } from "@/lib/leads/interest-bucket";
 import { DialogOverlay } from "@/components/shared/DialogOverlay";
@@ -22,6 +24,7 @@ export type ConsultationRow = {
   id: string;
   responses?: {
     kind?: string;
+    follow_up_calls?: ConsultationCall[];
     legacy_batch?: string;
     source_row?: number;
     raw?: Record<string, string>;
@@ -139,11 +142,12 @@ export function ConsultationCard({
           {expanded ? "Hide details" : "View details"}
         </button>
         <ScheduleVisitButton leadId={row.lead.id} onSaved={onSaved} />
-        {callAction && !isWonLead(row.lead) && <LeadCall leadId={row.lead.id} />}
+        {callAction && !isWonLead(row.lead) && <LeadCall leadId={row.lead.id} onSuccess={onSaved} />}
         {canRevisit && (
           <LogRevisit leadId={row.lead.id} onSaved={() => onSaved?.()} />
         )}
       </div>
+      {expanded && <ConsultationCallHistory calls={row.responses?.follow_up_calls} />}
       {expanded && (
         <ConsultationDetails
           row={row}
@@ -166,6 +170,7 @@ function ConsultationDetails({
   const [photo, setPhoto] = useState<string | null>(null);
   if (c.responses?.kind === "calling") return <article className="border rounded-xl p-4 bg-white space-y-3">
     <h2 className="font-bold">Calling consultation · {c.company_name || c.lead.company_name}</h2>
+    <p className="whitespace-pre-wrap">{c.notes}</p>
     <p>Call Picked: Yes</p><p>Level of interest: {c.interest_level}</p>
     <p>{new Date(c.visit_date).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} · {c.rep.name}</p>
     <p>Follow-up: {c.next_follow_up_date?.slice(0, 10) || "Not required"}</p>

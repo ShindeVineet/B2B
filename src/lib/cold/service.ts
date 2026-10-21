@@ -51,6 +51,7 @@ export async function evaluateCold(
   tx: Prisma.TransactionClient,
   lead: Lead,
   c: Consultation,
+  reassess = false,
 ) {
   const config =
     (await tx.coldLeadConfig.findUnique({ where: { id: "default" } })) ||
@@ -72,7 +73,7 @@ export async function evaluateCold(
       });
     return;
   }
-  if (existing?.resolved_at && existing.consultation_id === c.id) return;
+  if (!reassess && existing?.resolved_at && existing.consultation_id === c.id) return;
   const flag =
     existing && !existing.resolved_at ? existing.flagged_at : new Date();
   const row = await tx.coldLeadCase.upsert({

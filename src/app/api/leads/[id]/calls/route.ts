@@ -1,3 +1,4 @@
+import { attachConsultationCall } from "@/lib/consultations/call-history";
 import { isWonLead } from "@/lib/leads/interest-bucket";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
@@ -29,6 +30,7 @@ export async function POST(
     if (date && date < todayIndia())
       throw new RequestError("Choose today or a future follow-up date");
     const call = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM leads WHERE id=${id} FOR UPDATE`;
       const lead = await tx.lead.findFirst({
         where: { id, AND: [getLeadFilterForUser(user)] },
         include: { partners: { select: { partner_status: true } } },
@@ -53,6 +55,7 @@ export async function POST(
           next_follow_up_date: date ? new Date(date) : null,
         },
       });
+      const consultation = await attachConsultationCall(tx, id, { call_id: record.id, called_at: record.created_at.toISOString(), caller: user.name, actor_id: user.id, outcome: record.outcome, notes: record.notes, next_follow_up_date: date });
       await tx.lead.update({ where: { id }, data: { call_date: new Date() } });
       if (date)
         await tx.followUp.upsert({
@@ -67,6 +70,7 @@ export async function POST(
           action: "OFFICE_CALL_LOGGED",
           new_value: JSON.stringify({
             call_id: record.id,
+            consultation_id: consultation?.id,
             next_follow_up_date: date,
           }),
         },

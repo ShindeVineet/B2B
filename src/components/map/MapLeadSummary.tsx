@@ -1,4 +1,6 @@
 "use client";
+import { ConsultationCallHistory } from '@/components/consultations/ConsultationCallHistory';
+import type { ConsultationCall } from '@/lib/consultations/call-history';
 import { useEffect, useState } from "react";
 import { isWonLead } from "@/lib/leads/interest-bucket";
 import { LeadHistory } from "@/components/leads/LeadHistory";
@@ -6,6 +8,7 @@ import { LeadCall } from "@/components/leads/LeadCall";
 import { ScheduleVisitButton } from "@/components/leads/ScheduleVisitButton";
 
 type Consultation = {
+  responses?: { follow_up_calls?: ConsultationCall[] };
   id: string; visit_date: string; outcome: string; interest_level: string | null;
   decision_maker_name?: string | null; decision_maker_phone?: string | null;
   products_discussed?: string | null; notes?: string | null; next_steps?: string | null;
@@ -24,11 +27,12 @@ type Summary = {
 const date = (value: string) => new Date(value).toLocaleDateString("en-IN", {timeZone:"Asia/Kolkata",day:"numeric",month:"short",year:"numeric"});
 export function MapLeadSummary({leadId, status}: {leadId:string;status:string}) {
   const [lead,setLead]=useState<Summary|null>(null),[error,setError]=useState("");
+  const [revision, setRevision] = useState(0);
   useEffect(()=>{
     const controller=new AbortController();
     fetch(`/api/leads/${leadId}/history`,{signal:controller.signal}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error||"Unable to load lead details");return d.lead;}).then(setLead).catch(e=>{if(!controller.signal.aborted)setError(e.message);});
     return()=>controller.abort();
-  },[leadId]);
+  },[leadId, revision]);
   if(error)return <p role="alert" className="text-sm text-red-700">{error}</p>;
   if(!lead)return <p role="status" className="text-sm text-slate-500">Loading lead details…</p>;
   const won=isWonLead({...lead,status});
@@ -55,10 +59,11 @@ export function MapLeadSummary({leadId, status}: {leadId:string;status:string}) 
         {c.notes&&<p className="line-clamp-3 whitespace-pre-wrap">{c.notes}</p>}
         {c.next_steps&&<p>Next: {c.next_steps}</p>}
         {c.next_follow_up_date&&<p>Follow-up: {date(c.next_follow_up_date)}</p>}
+        <ConsultationCallHistory calls={c.responses?.follow_up_calls} />
       </article>)}</div>
     </section>
     {lead.partners.length>0&&<section><h4 className="font-bold text-sm mb-2">Partners</h4>{lead.partners.map(p=><p key={p.id} className="mb-2">{p.partner_code} · {p.contact_person_name}<br/><span className="text-slate-500">{p.company_legal_name?`${p.company_legal_name} · `:""}{p.partner_status}</span></p>)}</section>}
     {lead.store_visits.length>0&&<section><h4 className="font-bold text-sm mb-2">Store visits</h4>{lead.store_visits.map(v=><p key={v.id}>{date(v.scheduled_at)} · {new Date(v.scheduled_at).toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit"})} IST · {v.store.name} · {v.status}</p>)}</section>}
-    <div className="flex flex-wrap gap-2"><LeadHistory leadId={leadId}/>{!won&&<><LeadCall leadId={leadId}/><ScheduleVisitButton leadId={leadId}/></>}</div>
+    <div className="flex flex-wrap gap-2"><LeadHistory leadId={leadId}/>{!won&&<><LeadCall leadId={leadId} onSuccess={() => setRevision(value => value + 1)}/><ScheduleVisitButton leadId={leadId}/></>}</div>
   </div>;
 }
