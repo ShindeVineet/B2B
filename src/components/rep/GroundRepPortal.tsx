@@ -17,7 +17,7 @@ import { fetchAllMapLeads } from "@/lib/map-leads";
 import { latestByLead } from "@/lib/dashboard/metrics";
 import { todayIndia } from "@/lib/phase5/calendar";
 import { fullRouteLink, routeLinks, routeLinkStopCount, validRoutePoint } from "@/lib/route-links";
-type Lead = CardLead & { lat?: number | null; lng?: number | null; store?: { lat?: number | null; lng?: number | null } | null; consultation_read_only?: boolean; consultation_visit_id?: string | null; trip_lead_id?: string; latest_consultation_outcome?: string | null };
+type Lead = CardLead & { consultations?: { id: string }[]; lat?: number | null; lng?: number | null; store?: { lat?: number | null; lng?: number | null } | null; consultation_read_only?: boolean; consultation_visit_id?: string | null; trip_lead_id?: string; latest_consultation_outcome?: string | null };
 type Stop = { id: string; lead: Lead; completed: boolean; status: string; consultation?: unknown };
 export function GroundRepPortal({ memberId }: { memberId: string }) {
   const [tab,setTab]=useState("My Visits"),[date,setDate]=useState(todayIndia()),[leads,setLeads]=useState<Lead[]>([]),[stops,setStops]=useState<Stop[]>([]),[records,setRecords]=useState<ConsultationRow[]>([]),[error,setError]=useState(""),[loading,setLoading]=useState(true),[search,setSearch]=useState(""),[page,setPage]=useState(1),[consulting,setConsulting]=useState<Lead|null>(null);
@@ -52,7 +52,7 @@ export function GroundRepPortal({ memberId }: { memberId: string }) {
   const completeDayRoute = fullRouteLink(dayRouteLinks);
   const categories = ["Hot Leads", "Warm Leads", "Cold Leads", "Won"];
   const shown = leads.filter(l => (!categories.includes(tab) || interestBucket(l) === tab) && `${l.company_name} ${l.lead_code} ${l.phone_no} ${l.address}`.toLowerCase().includes(search.toLowerCase()));
-  const actions=(lead:Lead,stop?:Stop)=><>{lead.lat != null && lead.lng != null && <LeadNavigate lead={lead} />}{!isWonLead(lead) && ((stop ? !!stop.consultation || stop.completed : lead.consultation_read_only || lead.latest_consultation_outcome) ? <LogRevisit leadId={lead.id} onSaved={()=>void load()} /> : (!stop || ["pending","rescheduled"].includes(stop.status)) && <button className="bg-[#ff4500] text-white rounded-lg px-3 py-2 text-xs" onClick={()=>setConsulting({...lead,trip_lead_id:stop?.id || lead.consultation_visit_id || undefined})}>Log consultation</button>)}{stop && !stop.completed && !stop.consultation && <RescheduleVisit id={stop.id} onSaved={()=>void load()} />}</>;
+  const actions=(lead:Lead,stop?:Stop)=><>{lead.lat != null && lead.lng != null && <LeadNavigate lead={lead} />}{!isWonLead(lead) && ((stop ? !!stop.consultation || stop.completed || !!lead.consultations?.length : lead.consultation_read_only || lead.latest_consultation_outcome) ? <LogRevisit leadId={lead.id} onSaved={()=>void load()} /> : (!stop || ["pending","rescheduled"].includes(stop.status)) && <button className="bg-[#ff4500] text-white rounded-lg px-3 py-2 text-xs" onClick={()=>setConsulting({...lead,trip_lead_id:stop?.id || lead.consultation_visit_id || undefined})}>Log consultation</button>)}{stop && !stop.completed && !stop.consultation && <RescheduleVisit id={stop.id} onSaved={()=>void load()} />}</>;
   const visitRow = (lead: Lead, index: number, stop?: Stop) => {
     const won = isWonLead(lead);
     const stage = won ? "Won" : lead.funnel_status || lead.status;

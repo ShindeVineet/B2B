@@ -1,4 +1,6 @@
 "use client";
+import { RevisitHistory } from '@/components/consultations/RevisitHistory';
+import type { RevisitEntry } from '@/lib/consultations/revisit-history';
 import { ConsultationCallHistory } from './ConsultationCallHistory';
 import type { ConsultationCall } from '@/lib/consultations/call-history';
 import { GroupCreatedToggle } from "@/components/leads/GroupCreatedToggle";
@@ -24,7 +26,7 @@ export type ConsultationRow = {
   id: string;
   responses?: {
     kind?: string;
-    follow_up_calls?: ConsultationCall[];
+    follow_up_calls?: ConsultationCall[]; revisits?: RevisitEntry[];
     legacy_batch?: string;
     source_row?: number;
     raw?: Record<string, string>;
@@ -147,6 +149,7 @@ export function ConsultationCard({
           <LogRevisit leadId={row.lead.id} onSaved={() => onSaved?.()} />
         )}
       </div>
+      {expanded && <RevisitHistory revisits={row.responses?.revisits} />}
       {expanded && <ConsultationCallHistory calls={row.responses?.follow_up_calls} />}
       {expanded && (
         <ConsultationDetails

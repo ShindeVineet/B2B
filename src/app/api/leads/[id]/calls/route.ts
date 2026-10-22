@@ -1,3 +1,4 @@
+import { completeDueFollowUp } from "@/lib/follow-ups/service";
 import { attachConsultationCall } from "@/lib/consultations/call-history";
 import { isWonLead } from "@/lib/leads/interest-bucket";
 import { NextRequest, NextResponse } from "next/server";
@@ -63,6 +64,7 @@ export async function POST(
           create: { lead_id: id, rep_id: repId, due_date: new Date(date) },
           update: { rep_id: repId, due_date: new Date(date), active: true },
         });
+      else await completeDueFollowUp(tx, id);
       await tx.activityLog.create({
         data: {
           lead_id: id,

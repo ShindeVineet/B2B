@@ -1,3 +1,4 @@
+import { completeDueFollowUp } from "@/lib/follow-ups/service";
 import { channelFor } from "@/lib/dashboard/metrics";
 import { parseStoreVisit, saveStoreVisit } from "@/lib/consultations/store-visit";
 import { consultationVisit } from "@/lib/routes/consultation-visit";
@@ -292,11 +293,8 @@ export async function POST(req: NextRequest) {
             active: true,
           },
         });
-      else
-        await tx.followUp.updateMany({
-          where: { lead_id: lead.id },
-          data: { active: false },
-        });
+      else if (!["Wrong location", "Office closed", "Wrong Location/Office closed"].includes(outcome))
+        await completeDueFollowUp(tx, lead.id, text("visit_date").slice(0, 10));
       if (visit)
         await tx.tripLead.update({
           where: { id: visit.id },

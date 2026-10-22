@@ -85,6 +85,7 @@ export function LogRevisit({
                 );
                 setOpen(false);
                 window.dispatchEvent(new Event("onboarding-updated"));
+                window.dispatchEvent(new Event("followups-updated"));
                 if (!future)
                   window.dispatchEvent(
                     new CustomEvent("lead-contact-updated", {

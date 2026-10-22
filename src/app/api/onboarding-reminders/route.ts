@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getLeadFilterForUser } from "@/lib/permissions";
+import type { Prisma } from "@prisma/client";
 import { failure } from "@/lib/phase5/http";
 
 export async function GET(req: NextRequest) {
@@ -9,13 +10,17 @@ export async function GET(req: NextRequest) {
     const user = await getCurrentUser(req);
     if (!user)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ready: Prisma.ConsultationWhereInput = { OR: [
+      { outcome: "Ready for onboarding" },
+      { responses: { path: ["revisits"], array_contains: [{ outcome: "Ready for onboarding" }] } },
+    ] };
     // Readiness remains durable in consultation history, independent of documents.
     const leads = await prisma.lead.findMany({
       where: {
         AND: [
           getLeadFilterForUser(user),
           {
-            consultations: { some: { outcome: "Ready for onboarding" } },
+            consultations: { some: ready },
             partners: { none: { partner_status: "active" } },
           },
         ],
@@ -25,10 +30,10 @@ export async function GET(req: NextRequest) {
         lead_code: true,
         company_name: true,
         consultations: {
-          where: { outcome: "Ready for onboarding" },
+          where: ready,
           orderBy: { created_at: "desc" },
           take: 1,
-          select: { visit_date: true },
+          select: { visit_date: true, responses: true },
         },
         partners: {
           orderBy: { created_at: "desc" },
@@ -41,6 +46,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       reminders: leads.map((lead) => {
         const partner = lead.partners[0];
+        const response = lead.consultations[0].responses as { revisits?: { visited_at: string; outcome: string }[] } | null;
+        const readyVisit = response?.revisits?.filter(v => v.outcome === "Ready for onboarding").at(-1);
         const canOpenPartner =
           partner &&
           (partner.submitted_by === user.id ||
@@ -49,7 +56,7 @@ export async function GET(req: NextRequest) {
           id: lead.id,
           lead_code: lead.lead_code,
           company_name: lead.company_name,
-          since: lead.consultations[0].visit_date,
+          since: readyVisit?.visited_at || lead.consultations[0].visit_date,
           status: partner?.partner_status || "documents_pending",
           href: partner
             ? canOpenPartner

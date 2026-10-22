@@ -1,4 +1,6 @@
 "use client";
+import { RevisitHistory } from '@/components/consultations/RevisitHistory';
+import type { RevisitEntry } from '@/lib/consultations/revisit-history';
 import { ConsultationCallHistory } from '@/components/consultations/ConsultationCallHistory';
 import type { ConsultationCall } from '@/lib/consultations/call-history';
 import { useEffect, useState } from "react";
@@ -8,7 +10,7 @@ import { LeadCall } from "@/components/leads/LeadCall";
 import { ScheduleVisitButton } from "@/components/leads/ScheduleVisitButton";
 
 type Consultation = {
-  responses?: { follow_up_calls?: ConsultationCall[] };
+  responses?: { follow_up_calls?: ConsultationCall[]; revisits?: RevisitEntry[] };
   id: string; visit_date: string; outcome: string; interest_level: string | null;
   decision_maker_name?: string | null; decision_maker_phone?: string | null;
   products_discussed?: string | null; notes?: string | null; next_steps?: string | null;
@@ -60,6 +62,7 @@ export function MapLeadSummary({leadId, status}: {leadId:string;status:string}) 
         {c.next_steps&&<p>Next: {c.next_steps}</p>}
         {c.next_follow_up_date&&<p>Follow-up: {date(c.next_follow_up_date)}</p>}
         <ConsultationCallHistory calls={c.responses?.follow_up_calls} />
+        <RevisitHistory revisits={c.responses?.revisits} />
       </article>)}</div>
     </section>
     {lead.partners.length>0&&<section><h4 className="font-bold text-sm mb-2">Partners</h4>{lead.partners.map(p=><p key={p.id} className="mb-2">{p.partner_code} · {p.contact_person_name}<br/><span className="text-slate-500">{p.company_legal_name?`${p.company_legal_name} · `:""}{p.partner_status}</span></p>)}</section>}

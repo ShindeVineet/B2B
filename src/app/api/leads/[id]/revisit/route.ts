@@ -1,3 +1,6 @@
+import { randomUUID } from "node:crypto";
+import { appendRevisit } from "@/lib/consultations/revisit-history";
+import { completeDueFollowUp } from "@/lib/follow-ups/service";
 import { isWonLead } from "@/lib/leads/interest-bucket";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
@@ -68,13 +71,14 @@ export async function POST(
       if (isWonLead(lead)) throw new RequestError("Onboarded leads cannot log revisits", 409);
       const previous = await tx.consultation.findFirst({
         where: { lead_id: id },
-        orderBy: { created_at: "desc" },
+        orderBy: [{ visit_date: "desc" }, { created_at: "desc" }, { id: "desc" }],
       });
       if (!previous)
         throw new RequestError(
           "Use the consultation form for the first visit",
           409,
         );
+      if (body.outcome) await tx.lead.update({ where: { id }, data: { call_date: new Date(), call_outcome: body.outcome } });
       // Store walk-in follow-ups are consultations/reminders, not ground route visits.
       if (
         ["store", "head", "caller"].includes(lead.intake_team) &&
@@ -83,22 +87,13 @@ export async function POST(
       ) {
         if (target === todayIndia() && !body.outcome)
           throw new RequestError("Choose a revisit outcome");
-        if (target === todayIndia())
-          await tx.consultation.create({
-            data: {
-              lead_id: id,
-              rep_id: user.id,
-              company_name: lead.company_name,
-              ground_staff_name: user.name,
-              decision_maker_name: previous.decision_maker_name,
-              decision_maker_phone: previous.decision_maker_phone,
-              interest_level: previous.interest_level,
-              outcome: body.outcome,
-              notes: body.notes?.trim() || null,
-              next_follow_up_date: followDate ? new Date(followDate) : null,
-              responses: { kind: "revisit", channel: "walk_in" },
-            },
-          });
+        if (target === todayIndia()) {
+          await tx.consultation.update({ where: { id: previous.id }, data: appendRevisit(previous, {
+            id: randomUUID(), visited_at: new Date().toISOString(), actor_id: user.id, staff_name: user.name,
+            trip_lead_id: null, channel: 'walk_in', outcome: body.outcome, notes: body.notes?.trim() || '', next_follow_up_date: followDate,
+          }) });
+          if (!followDate && body.outcome !== "Couldn't meet") await completeDueFollowUp(tx, id);
+        }
         const due = target > todayIndia() ? target : followDate;
         if (due)
           await tx.followUp.upsert({
@@ -118,6 +113,8 @@ export async function POST(
             action:
               target > todayIndia() ? "REVISIT_SCHEDULED" : "REVISIT_LOGGED",
             new_value: JSON.stringify({
+              consultation_id: previous.id,
+              next_follow_up_date: followDate,
               channel: "walk_in",
               date: target,
               outcome: body.outcome,
@@ -129,29 +126,11 @@ export async function POST(
       }
       const finish = async (v: { id: string }) => {
         if (!body.outcome) return v;
-        await tx.consultation.create({
-          data: {
-            lead_id: id,
-            rep_id: user.id,
-            trip_lead_id: v.id,
-            visit_date: new Date(),
-            outcome: body.outcome,
-            notes: body.notes?.trim() || null,
-            interest_level: previous.interest_level,
-            decision_maker_name: previous.decision_maker_name,
-            decision_maker_phone: previous.decision_maker_phone,
-            designation: previous.designation,
-            email: previous.email,
-            lead_type: previous.lead_type,
-            company_name: lead.company_name,
-            next_follow_up_date: followDate ? new Date(followDate) : null,
-            responses: {
-              kind: "revisit",
-              outcome: body.outcome,
-              notes: body.notes?.trim() || "",
-            },
-          },
-        });
+        await tx.consultation.update({ where: { id: previous.id }, data: appendRevisit(previous, {
+          id: randomUUID(), visited_at: new Date().toISOString(), actor_id: user.id, staff_name: user.name,
+          trip_lead_id: v.id, channel: 'ground', outcome: body.outcome, notes: body.notes?.trim() || '', next_follow_up_date: followDate,
+        }) });
+        if (!followDate && body.outcome !== "Couldn't meet") await completeDueFollowUp(tx, id);
         await tx.tripLead.update({
           where: { id: v.id },
           data: { completed: true, status: "visited" },
@@ -177,6 +156,7 @@ export async function POST(
             action: "REVISIT_LOGGED",
             old_value: v.id,
             new_value: JSON.stringify({
+              consultation_id: previous.id,
               outcome: body.outcome,
               notes: body.notes || null,
               next_follow_up_date: followDate,

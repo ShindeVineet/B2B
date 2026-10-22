@@ -64,6 +64,7 @@ export function Navbar() {
   const role = user.role;
 
   const navItems = [
+    { name: "Follow Up", href: "/follow-ups", icon: ClipboardCheck, roles: ["super_admin", "b2b_head", "regional_manager", "store_associate", "ground_rep", "analyst"] },
     { name: "Route Builder", href: "/route-planner", icon: Compass, roles: ["super_admin", "b2b_head", "regional_manager"] },
     { name: "Warm Leads", href: "/warm-leads", icon: Users, roles: ["super_admin", "b2b_head","regional_manager","ground_rep","analyst"] },
     { name: "New lead", href: "/leads/new", icon: Users, roles: ["super_admin", "b2b_head", "regional_manager", "store_associate"] },
@@ -183,10 +184,10 @@ export function Navbar() {
     );
   const primaryPaths =
     role === "ground_rep"
-      ? ["/rep-portal", "/warm-leads", "/partners"]
+      ? ["/rep-portal", "/follow-ups", "/warm-leads", "/partners"]
       : role === "store_associate"
-        ? ["/dashboard", "/calling", "/partners"]
-        : ["/dashboard", "/leads", "/warm-leads", "/map", "/calling"];
+        ? ["/dashboard", "/follow-ups", "/calling", "/partners"]
+        : ["/dashboard", "/follow-ups", "/leads", "/warm-leads", "/map", "/calling"];
   const primaryNav = primaryPaths.flatMap((path) =>
     filteredNav.filter((item) => item.href === path),
   );

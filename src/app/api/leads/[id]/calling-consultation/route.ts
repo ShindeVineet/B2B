@@ -1,3 +1,4 @@
+import { completeDueFollowUp } from "@/lib/follow-ups/service";
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       } }) : null);
       const updatedLead = await tx.lead.update({ where: { id }, data: { call_date: now, call_outcome: call.outcome, ...(input.picked ? { whatsapp_group_created: input.group, status: 'Active — Nurturing' } : {}) } });
       if (date) await tx.followUp.upsert({ where: { lead_id: id }, create: { lead_id: id, rep_id: user.id, due_date: date }, update: { rep_id: user.id, due_date: date, active: true } });
-      else await tx.followUp.updateMany({ where: { lead_id: id, rep_id: user.id, active: true }, data: { active: false } });
+      else await completeDueFollowUp(tx, id);
       if (consultation && input.picked) await evaluateCold(tx, updatedLead, consultation, Boolean(attached));
       await tx.activityLog.create({ data: { lead_id: id, actor_id: user.id, action: input.picked ? 'CALLING_CONSULTATION_LOGGED' : 'CALL_NOT_PICKED', old_value: JSON.stringify({ whatsapp_group_created: lead.whatsapp_group_created }), new_value: JSON.stringify({ call_id: call.id, consultation_id: consultation?.id, next_follow_up_date: input.followUp, notes: input.notes, ...(input.picked ? { interest_level: input.interest, whatsapp_group_created: input.group } : {}) }) } });
       return { call, consultation, next_follow_up_date: input.followUp };
