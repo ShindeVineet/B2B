@@ -1,3 +1,7 @@
+import { randomUUID } from "node:crypto";
+import { saveGroundConsultation } from "@/lib/consultations/save-ground";
+import { imageMime } from "@/lib/consultations/photos";
+import { saveStorageFile, deleteStorageFile } from "@/lib/storage/s3";
 import { funnelStatus } from "@/lib/leads/funnel-status";
 import { partnerType } from "@/lib/partners/identity";
 import { validateIntake } from "@/lib/leads/intake";
@@ -284,16 +288,26 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const uploadedFiles: string[] = [];
+  let committed = false;
   try {
     const user = await getCurrentUser(req);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!["b2b_head", "regional_manager", "store_associate"].includes(user.role))
+    if (!["b2b_head", "regional_manager", "store_associate", "ground_rep"].includes(user.role))
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    const body = await req.json();
+    const multipart = req.headers.get("content-type")?.startsWith("multipart/form-data")
+      ? await req.formData() : null;
+    let body;
+    try { body = multipart ? JSON.parse(String(multipart.get("data") || "")) : await req.json(); }
+    catch { throw new RequestError("Invalid lead form"); }
+    if (!body || typeof body !== "object" || Array.isArray(body)) throw new RequestError("Invalid lead form");
+    const groundVisit = body.ground_visit === true;
+    if ((groundVisit && user.role !== "ground_rep") || (user.role === "ground_rep" && !groundVisit)) throw new RequestError("Forbidden", 403);
+    if (groundVisit && (body.assigned_ground_rep_id || body.assigned_store_id)) throw new RequestError("Visits are assigned to you automatically");
     const {
       pin_code,
       address,
@@ -307,8 +321,12 @@ export async function POST(req: NextRequest) {
       assigned_ground_rep_id,
     } = body;
 
-    const intake = validateIntake({ ...body, lead_source: lead_source || "Manual" });
-    if (intake.lead_source === "Manual" && user.role !== "b2b_head") throw new RequestError("Manual leads are handled by the B2B Head", 403);
+    const intake = validateIntake({ ...body, lead_source: groundVisit ? "Manual" : lead_source || "Manual" });
+    if (groundVisit) {
+      if (!intake.company_name) throw new RequestError("Company name is required");
+      intake.intake_team = "ground";
+    }
+    if (!groundVisit && intake.lead_source === "Manual" && user.role !== "b2b_head") throw new RequestError("Manual leads are handled by the B2B Head", 403);
     if (user.role === "store_associate" && !["Walk-in", "Phone", "CDT", "LinkedIn"].includes(intake.lead_source)) throw new RequestError("Manager access required for ground-team intake", 403);
     if (body.gst_no != null && (typeof body.gst_no !== "string" || body.gst_no.length > 30)) throw new RequestError("Invalid GST number");
     const type = partnerType(body.partner_type, body.gst_no);
@@ -331,7 +349,7 @@ export async function POST(req: NextRequest) {
     const follow = consultation.next_follow_up_date;
     if (follow && (typeof follow !== "string" || dateOnly(follow) < todayIndia())) throw new RequestError("Choose today or a future follow-up date");
     if (consultation.interest_level && !["High", "Medium", "Low"].includes(consultation.interest_level)) throw new RequestError("Choose a valid interest level");
-    for (const key of ["notes", "lead_type"]) if (consultation[key] != null && (typeof consultation[key] !== "string" || consultation[key].length > 2000)) throw new RequestError(`Invalid consultation ${key}`);
+    for (const key of (groundVisit ? [] : ["notes", "lead_type"])) if (consultation[key] != null && (typeof consultation[key] !== "string" || consultation[key].length > 2000)) throw new RequestError(`Invalid consultation ${key}`);
     const numbers = intake.numbers;
     // Check duplicate
     if (numbers[0] && pin_code) {
@@ -365,7 +383,7 @@ export async function POST(req: NextRequest) {
 
     if (intake.intake_team !== "ground" && assigned_ground_rep_id) throw new RequestError("Assign this source to its intake team first");
     let targetStoreId =
-      (await resolveAssignment(
+      (groundVisit ? user.store_id : await resolveAssignment(
         user,
         assigned_ground_rep_id,
         assigned_store_id,
@@ -412,7 +430,7 @@ export async function POST(req: NextRequest) {
           extra_notes: extra_notes || null,
           status: combined ? (visit ? "Active — Visit Scheduled" : "Active — Nurturing") : targetStoreId ? "Assigned" : "New",
           assigned_store_id: targetStoreId,
-          assigned_ground_rep_id: assigned_ground_rep_id || null,
+          assigned_ground_rep_id: groundVisit ? user.id : assigned_ground_rep_id || null,
           scraped_date: new Date(),
         },
         include: {
@@ -519,7 +537,31 @@ export async function POST(req: NextRequest) {
           },
         });
       }
-      if (combined) {
+      if (groundVisit) {
+        const answers = { ...consultation };
+        for (const key of ["site_photos", "visiting_card_photos"]) {
+          const urls = answers[key] || [];
+          if (!Array.isArray(urls) || urls.length > 5) throw new RequestError("Choose up to five photos per field");
+          answers[key] = [];
+          for (const [index, url] of urls.entries()) {
+            const token = key.replaceAll("_", "-") + "-" + index;
+            const file = multipart?.get(token);
+            if (url !== "/api/photos/" + token || !(file instanceof File) || !file.size || file.size > 10 * 1024 * 1024)
+              throw new RequestError("Choose an image under 10 MB");
+            const bytes = Buffer.from(await file.arrayBuffer());
+            const mime = imageMime(bytes);
+            if (!mime) throw new RequestError("Use a JPEG, PNG or WebP image");
+            const filename = randomUUID();
+            uploadedFiles.push(filename);
+            await saveStorageFile(filename, bytes, mime, "photos");
+            const asset = await tx.photoAsset.create({ data: {
+              lead_id: created.id, owner_id: user.id, filename, mime_type: mime, size_bytes: file.size,
+            } });
+            answers[key].push("/api/photos/" + asset.id);
+          }
+        }
+        await saveGroundConsultation(tx, user, created, answers);
+      } else if (combined) {
         const record = await tx.consultation.create({ data: {
           lead_id: created.id, rep_id: user.id,
           direct_store_meeting: consultation.direct_store_meeting === true || consultation.direct_store_meeting === "true",
@@ -538,11 +580,13 @@ export async function POST(req: NextRequest) {
         if (follow) await tx.followUp.create({ data: { lead_id: created.id, rep_id: user.id, due_date: new Date(follow) } });
       }
       await tx.activityLog.create({ data: { lead_id: created.id, actor_id: user.id, action: "LEAD_CREATED", new_value: JSON.stringify({ source: intake.lead_source, team: intake.intake_team, consultation: combined || hasCallingConsultation }) } });
-      return created;
-    });
+      return groundVisit ? await tx.lead.findUniqueOrThrow({ where: { id: created.id } }) : created;
+    }, { timeout: 120000 });
+    committed = true;
 
     return NextResponse.json({ success: true, lead }, { status: 201 });
   } catch (err: unknown) {
+    if (!committed) await Promise.allSettled(uploadedFiles.map(filename => deleteStorageFile(filename, "photos")));
     return failure(err);
   }
 }

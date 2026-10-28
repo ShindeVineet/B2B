@@ -1,15 +1,12 @@
+import { dailyInbound, dailyReportRange } from "@/lib/dashboard/daily-inbound";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { addDays, dateOnly, todayIndia } from "@/lib/phase5/calendar";
+import { dateOnly, todayIndia } from "@/lib/phase5/calendar";
 import { channelFor, CHANNELS } from "@/lib/dashboard/metrics";
 import { failure, RequestError } from "@/lib/phase5/http";
 
 const PAGE_SIZE = 25;
-const range = (date: string) => ({
-  gte: new Date(`${date}T00:00:00+05:30`),
-  lt: new Date(`${addDays(date, 1)}T00:00:00+05:30`),
-});
 const level = (value?: string | null) => {
   const normalized = value?.toLowerCase();
   return normalized === "high" ? "hot" : normalized === "medium" ? "warm" : normalized === "low" ? "cold" : "unclassified";
@@ -28,7 +25,7 @@ export async function GET(req: NextRequest) {
     const user = await getCurrentUser(req);
     if (!user || !["b2b_head", "super_admin"].includes(user.role)) throw new RequestError("Forbidden", 403);
     const date = dateOnly(req.nextUrl.searchParams.get("date") || todayIndia());
-    const day = range(date);
+    const day = dailyReportRange(date);
     const section = req.nextUrl.searchParams.get("section");
     const page = Math.max(1, Math.floor(Number(req.nextUrl.searchParams.get("page"))) || 1);
     const pagination = { skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE };
@@ -49,6 +46,26 @@ export async function GET(req: NextRequest) {
       ]);
       const rows = records.map(row => ({ id: row.id, lead_id: row.lead_id, lead_code: row.lead.lead_code, company_name: row.lead.company_name, staff: row.rep.name, channel: channelFor({ ...row, ...row.lead, rep_role: row.rep.role }), interest_level: row.interest_level, outcome: row.outcome, created_at: row.created_at }));
       return NextResponse.json({ date, section, rows, total, page, totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)) });
+    }
+    if (section === "inbound") {
+      const [records, calls, events] = await Promise.all([
+        prisma.consultation.findMany({ where: { created_at: day }, select: {
+          id: true, lead_id: true, interest_level: true, outcome: true, created_at: true,
+          interaction_channel: true, direct_store_meeting: true, trip_lead_id: true,
+          lead: { select: { lead_code: true, company_name: true, lead_source: true, intake_team: true } },
+          rep: { select: { name: true, role: true } },
+        } }),
+        prisma.callLog.findMany({ where: { created_at: day }, select: {
+          id: true, lead_id: true, outcome: true, created_at: true,
+          actor: { select: { name: true } }, lead: { select: { lead_code: true, company_name: true } },
+        } }),
+        prisma.activityLog.findMany({ where: { created_at: day, action: { in: ["CALLING_CONSULTATION_LOGGED", "OFFICE_CALL_LOGGED", "CALL_NOT_PICKED"] } }, select: { action: true, new_value: true } }),
+      ]);
+      const rows = dailyInbound(
+        records.map(row => ({ ...row, staff: row.rep.name, lead_code: row.lead.lead_code, company_name: row.lead.company_name, channel: channelFor({ ...row, ...row.lead, rep_role: row.rep.role }) })),
+        calls.map(row => ({ ...row, staff: row.actor.name, lead_code: row.lead.lead_code, company_name: row.lead.company_name })), events,
+      );
+      return NextResponse.json({ date, section, rows: rows.slice(pagination.skip, pagination.skip + PAGE_SIZE), total: rows.length, page, totalPages: Math.max(1, Math.ceil(rows.length / PAGE_SIZE)) });
     }
     if (section === "calls") {
       const where = { created_at: day };
@@ -75,9 +92,9 @@ export async function GET(req: NextRequest) {
     const [totalLeads, sources, consultations, calls, groupEvents, onboarded] = await Promise.all([
       prisma.lead.count({ where: { created_at: day } }),
       prisma.lead.groupBy({ by: ["lead_source"], where: { created_at: day }, _count: { _all: true }, orderBy: { _count: { lead_source: "desc" } } }),
-      prisma.consultation.findMany({ where: { created_at: day }, select: { id: true, lead_id: true, interest_level: true, interaction_channel: true, direct_store_meeting: true, trip_lead_id: true, rep: { select: { id: true, name: true, role: true } }, lead: { select: { lead_source: true, intake_team: true } } } }),
-      prisma.callLog.findMany({ where: { created_at: day }, select: { outcome: true, actor: { select: { id: true, name: true } } } }),
-      prisma.activityLog.findMany({ where: { created_at: day, action: { in: ["GROUP_CREATED_UPDATED", "CALLING_CONSULTATION_LOGGED"] } }, select: { action: true, old_value: true, new_value: true } }),
+      prisma.consultation.findMany({ where: { created_at: day }, select: { id: true, lead_id: true, created_at: true, interest_level: true, interaction_channel: true, direct_store_meeting: true, trip_lead_id: true, rep: { select: { id: true, name: true, role: true } }, lead: { select: { lead_source: true, intake_team: true } } } }),
+      prisma.callLog.findMany({ where: { created_at: day }, select: { id: true, lead_id: true, created_at: true, outcome: true, actor: { select: { id: true, name: true } } } }),
+      prisma.activityLog.findMany({ where: { created_at: day, action: { in: ["GROUP_CREATED_UPDATED", "CALLING_CONSULTATION_LOGGED", "OFFICE_CALL_LOGGED", "CALL_NOT_PICKED"] } }, select: { action: true, old_value: true, new_value: true } }),
       prisma.partner.count({ where: { partner_status: "active", OR: [{ created_at: day }, { reviewed_at: day }] } }),
     ]);
     const channelRows = Object.entries(CHANNELS).map(([key, label]) => ({ key, label, total: 0, hot: 0, warm: 0, cold: 0, unclassified: 0 }));
@@ -90,6 +107,10 @@ export async function GET(req: NextRequest) {
       const person = staff.get(record.rep.id) || { id: record.rep.id, name: record.rep.name, total: 0, hot: 0, warm: 0, cold: 0, unclassified: 0 };
       person.total++; person[bucket]++; staff.set(record.rep.id, person);
     }
+    const inbound = dailyInbound(consultations.map(record => ({ ...record, channel: channelFor({ ...record, ...record.lead, rep_role: record.rep.role }) })), calls, groupEvents);
+    const inboundChannel = channelRows.find(row => row.key === "caller")!;
+    Object.assign(inboundChannel, { total: 0, hot: 0, warm: 0, cold: 0, unclassified: 0 });
+    for (const row of inbound) { inboundChannel.total++; inboundChannel[level(row.interest_level)]++; }
     const callStaff = new Map<string, { id: string; name: string; called: number; picked: number }>();
     for (const call of calls) {
       const person = callStaff.get(call.actor.id) || { id: call.actor.id, name: call.actor.name, called: 0, picked: 0 };

@@ -1,3 +1,4 @@
+import { revisitOwner } from "./workspace";
 import type { Prisma } from "@prisma/client";
 import { visitPoolReason, closedVisit } from "./eligibility";
 import { canPlotLead } from "../mapping/visibility";
@@ -7,7 +8,12 @@ export async function leadEligibility(
   ids: string[],
   ownRoute?: string,
   excludeVisits: string[] = [],
+  revisitRep?: string,
 ) {
+  if (ownRoute && !revisitRep) {
+    const route = await tx.plannedRoute.findUnique({ where: { id: ownRoute }, select: { area_filter: true } });
+    revisitRep = revisitOwner(route?.area_filter);
+  }
   const holders = await tx.plannedRoute.findMany({
     where: {
       status: { in: ["draft", "ready"] },
@@ -42,6 +48,7 @@ export async function leadEligibility(
           { id: "desc" },
         ],
       },
+      partners: { where: { partner_status: "active" }, select: { id: true } },
       consultations: { orderBy: { created_at: "desc" }, take: 1 },
     },
   });
@@ -65,16 +72,24 @@ export async function leadEligibility(
     const unresolved = l.trip_leads.some(
       (v) => !closedVisit(v) && !["skipped", "cancelled"].includes(v.status),
     );
-    const reason = l.intake_team === "caller"
+    const reserved = l.route_memberships.some(m => {
+      if (!revisitRep) return true;
+      return !l.trip_leads.some(v => v.route_id === m.route_id && closedVisit(v));
+    }) || held.has(l.id);
+    const reason = revisitRep && l.assigned_ground_rep_id !== revisitRep
+      ? "Lead is no longer assigned to this person"
+      : revisitRep && l.partners.length > 0
+      ? "Already onboarded"
+      : l.intake_team === "caller"
       ? "In Calling Queue — complete or verify its location before route planning"
       : l.intake_team !== "ground" && !l.assigned_ground_rep_id
       ? "Owned by the intake team — a manager must assign a ground rep before route planning"
       : !canPlotLead(l)
       ? "Resolve Mapping Issues first"
       : visitPoolReason(
-          visit,
+          revisitRep ? null : visit,
           unresolved,
-          l.route_memberships.length > 0 || held.has(l.id),
+          reserved,
         );
     return { lead: l, reason };
   });
@@ -84,10 +99,11 @@ export async function assertEligible(
   ids: string[],
   ownRoute?: string,
   excludeVisits: string[] = [],
+  revisitRep?: string,
 ) {
   for (const id of [...new Set(ids)].sort())
     await tx.$queryRaw`SELECT id FROM leads WHERE id=${id} FOR UPDATE`;
-  const rows = await leadEligibility(tx, ids, ownRoute, excludeVisits);
+  const rows = await leadEligibility(tx, ids, ownRoute, excludeVisits, revisitRep);
   const invalid = rows.find((r) => r.reason);
   if (rows.length !== new Set(ids).size)
     throw new RequestError("Some selected leads no longer exist", 409);

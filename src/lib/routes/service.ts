@@ -1,3 +1,4 @@
+import { revisitOwner } from "./workspace";
 import type { Prisma } from "@prisma/client";
 import type { AuthUser } from "../auth";
 import { getLeadFilterForUser, getUserFilterForUser } from "../permissions";
@@ -121,13 +122,19 @@ export async function assignStops(
   tripId: string,
   date: string,
   stops: ClusterLead[],
+  revisitRep?: string,
 ) {
+  const metadata = (await tx.plannedRoute.findUnique({ where: { id: routeId }, select: { area_filter: true } }))?.area_filter;
+  revisitRep = revisitOwner(metadata) || revisitRep;
   const { plan } = await capacityFor(tx, user, tripId, date, stops.length);
   const leads = await assertEligible(
     tx,
     stops.map((p) => p.id),
     routeId,
+    [],
+    revisitRep,
   );
+  if (revisitRep && plan.ground_rep_id !== revisitRep) throw new RequestError("Revisit owner changed", 409);
   if (
     leads.some(
       (l) =>
@@ -179,6 +186,8 @@ export async function removePending(
   routeId: string,
   leadId?: string,
 ) {
+  const metadata = (await tx.plannedRoute.findUnique({ where: { id: routeId }, select: { area_filter: true } }))?.area_filter;
+  const revisitRep = revisitOwner(metadata);
   const visits = await tx.tripLead.findMany({
     where: {
       route_id: routeId,
@@ -199,7 +208,7 @@ export async function removePending(
     await tx.lead.updateMany({
       where: { id: v.lead_id, assigned_ground_rep_id: v.trip.ground_rep_id },
       data: {
-        assigned_ground_rep_id: other?.trip.ground_rep_id || null,
+        assigned_ground_rep_id: other?.trip.ground_rep_id || revisitRep || null,
         assigned_visit_date: other?.scheduled_date || null,
       },
     });

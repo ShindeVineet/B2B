@@ -1,4 +1,6 @@
 "use client";
+import { LeadIntakeForm } from "@/components/leads/LeadIntakeForm";
+import { DialogOverlay } from "@/components/shared/DialogOverlay";
 import { GroupCreatedToggle } from "@/components/leads/GroupCreatedToggle";
 import { useCallback, useEffect, useState, useRef } from "react";
 import { interestBucket, isWonLead } from "@/lib/leads/interest-bucket";
@@ -21,6 +23,7 @@ type Lead = CardLead & { consultations?: { id: string }[]; lat?: number | null; 
 type Stop = { id: string; lead: Lead; completed: boolean; status: string; consultation?: unknown };
 export function GroundRepPortal({ memberId }: { memberId: string }) {
   const [tab,setTab]=useState("My Visits"),[date,setDate]=useState(todayIndia()),[leads,setLeads]=useState<Lead[]>([]),[stops,setStops]=useState<Stop[]>([]),[records,setRecords]=useState<ConsultationRow[]>([]),[error,setError]=useState(""),[loading,setLoading]=useState(true),[search,setSearch]=useState(""),[page,setPage]=useState(1),[consulting,setConsulting]=useState<Lead|null>(null);
+  const [addingVisit, setAddingVisit] = useState(false);
   const request = useRef(0);
   const load=useCallback(async()=>{
     const version = ++request.current; setLoading(true);
@@ -70,7 +73,7 @@ export function GroundRepPortal({ memberId }: { memberId: string }) {
   };
   return <div className="min-h-screen bg-slate-50 pb-24 text-slate-900">
     <header className="bg-white border-b border-slate-200">
-      <div className="max-w-4xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-sm font-black">My Visits</h1><p className="text-xs text-slate-500">Ground Team Field Portal</p></div>
+      <div className="max-w-4xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-3"><h1 className="text-sm font-black">My Visits</h1><button onClick={()=>setAddingVisit(true)} className="rounded-lg bg-[#ff4500] px-3 py-1.5 text-xs font-bold text-white">Add a visit</button></div><p className="text-xs text-slate-500">Ground Team Field Portal</p></div>
         <div className="flex items-center gap-2"><button onClick={()=>setDate(todayIndia())} className="px-3 py-2 rounded-xl text-xs font-bold bg-[#ff4500] text-white">Today</button><input aria-label="Visit date" type="date" value={date} onChange={e=>setDate(e.target.value)} className="border rounded-xl px-2 py-1.5 text-xs"/><button onClick={()=>void load()} className="text-xs px-3 py-2 bg-slate-100 rounded-xl">Refresh</button></div>
       </div>
       <nav className="max-w-4xl mx-auto px-4 py-2 flex gap-1 overflow-x-auto border-t border-slate-100" aria-label="My Visits sections">{["My Visits","Assigned",...categories,"Consultations","Onboarding","Visits Today"].map(t=><button key={t} aria-current={tab===t?"page":undefined} className={`px-3 py-2 text-xs font-bold rounded-xl whitespace-nowrap ${tab===t?"bg-orange-50 text-[#ff4500] border border-[#ff4500]/30":"text-slate-600 hover:bg-slate-100"}`} onClick={()=>{setTab(t);setPage(1);}}>{t}{categories.includes(t) ? ` (${leads.filter(l=>interestBucket(l)===t).length})` : ""}</button>)}</nav>
@@ -92,6 +95,7 @@ export function GroundRepPortal({ memberId }: { memberId: string }) {
       </>}
       {["Assigned",...categories,"Consultations"].includes(tab)&&<div className="flex gap-3 text-sm"><button disabled={page===1} onClick={()=>setPage(p=>p-1)}>Previous</button><span>Page {page}</span><button disabled={page*24 >= (tab==="Consultations"?latest.length:shown.length)} onClick={()=>setPage(p=>p+1)}>Next</button></div>}
     </div>
+    {addingVisit && <DialogOverlay aria-label="Add a visit" className="fixed inset-0 z-50 bg-black/40 overflow-y-auto p-4"><div className="mx-auto max-w-4xl rounded-2xl bg-white p-5"><div className="flex justify-between mb-4"><h2 className="font-bold">Add a visit</h2><button onClick={()=>setAddingVisit(false)}>Close</button></div><LeadIntakeForm initialSource="Manual" groundVisit onSaved={()=>void load()} /></div></DialogOverlay>}
     {consulting&&<ConsultationModal context="ground" lead={consulting} isOpen onClose={()=>setConsulting(null)} onSuccess={()=>{setConsulting(null);void load();}}/>}
   </div>;
 }

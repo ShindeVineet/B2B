@@ -248,7 +248,7 @@ export async function PATCH(
           await sequenceRemaining(tx, id);
         } else if (b.action === "add") {
           await assertScoped(tx, u, [b.lead_id]);
-          const [lead] = await assertEligible(tx, [b.lead_id]);
+          const [lead] = await assertEligible(tx, [b.lead_id], id);
           const point = { id: lead.id, lat: lead.lat!, lng: lead.lng! };
           const insertion = cheapestInsertion(stops, point);
           if (route.status === "assigned") {

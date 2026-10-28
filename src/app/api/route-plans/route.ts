@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { canUserManageLeads, getLeadFilterForUser } from "@/lib/permissions";
+import { canUserManageLeads, getLeadFilterForUser, getUserFilterForUser } from "@/lib/permissions";
 import { failure, RequestError } from "@/lib/phase5/http";
 import { leadEligibility, assertEligible } from "@/lib/routes/pool";
 import { buildRouteBatch } from "@/lib/routes/geometry";
@@ -18,14 +18,25 @@ import {
   type ClusterLead,
 } from "@/lib/clustering/cluster-leads";
 import { canPlotLead } from "@/lib/mapping/visibility";
+async function selectedRep(req: NextRequest, user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>, value: unknown) {
+  if (req.nextUrl.pathname !== "/api/assigned-lead-routes") return undefined;
+  if (typeof value !== "string" || !value.trim()) throw new RequestError("Select a person first");
+  const rep = await prisma.user.findFirst({ where: {
+    id: value, active: true, role: { in: ["ground_rep", "regional_manager", "b2b_head"] },
+    AND: [getUserFilterForUser(user)],
+  }, select: { id: true } });
+  if (!rep) throw new RequestError("Choose an active person in your team", 403);
+  return rep.id;
+}
 export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser(req);
     if (!user || !canUserManageLeads(user))
       throw new RequestError("Forbidden", 403);
+    const rep = await selectedRep(req, user, req.nextUrl.searchParams.get("rep_id"));
     if (req.nextUrl.searchParams.get("filters") === "true") {
       const pairs = await prisma.lead.findMany({
-        where: getLeadFilterForUser(user),
+        where: { AND: [getLeadFilterForUser(user)], ...(rep ? { assigned_ground_rep_id: rep } : {}) },
         select: { pin_code: true, region: true },
         distinct: ["pin_code", "region"],
         orderBy: { pin_code: "asc" },
@@ -45,6 +56,7 @@ export async function GET(req: NextRequest) {
       const leads = await prisma.lead.findMany({
         where: {
           AND: [scope],
+          ...(rep ? { assigned_ground_rep_id: rep } : {}),
           ...(pincodes.length ? { pin_code: { in: pincodes } } : {}),
           ...(p.get("store") ? { assigned_store_id: p.get("store")! } : {}),
           ...(p.get("region") ? { region: p.get("region")! } : {}),
@@ -64,11 +76,15 @@ export async function GET(req: NextRequest) {
       const rows = await leadEligibility(
         prisma,
         leads.map((l) => l.id),
+        undefined,
+        [],
+        rep,
       );
       const calling = await prisma.lead.groupBy({
         by: ["pin_code"],
         where: {
           AND: [scope],
+          ...(rep ? { assigned_ground_rep_id: rep } : {}),
           intake_team: "caller",
           ...(pincodes.length ? { pin_code: { in: pincodes } } : {}),
           ...(p.get("store") ? { assigned_store_id: p.get("store")! } : {}),
@@ -89,7 +105,7 @@ export async function GET(req: NextRequest) {
       const callingIds = new Set(
         rows.filter((row) => row.lead.intake_team === "caller").map((row) => row.lead.id),
       );
-      const visibleRows = rows.filter((row) => !callingIds.has(row.lead.id));
+      const visibleRows = rep ? rows : rows.filter((row) => !callingIds.has(row.lead.id));
       return NextResponse.json({
         leads: visibleRows
           .filter((r) => !r.reason)
@@ -134,6 +150,7 @@ export async function POST(req: NextRequest) {
     if (!user || !canUserManageLeads(user))
       throw new RequestError("Forbidden", 403);
     const b = await req.json();
+    const rep = await selectedRep(req, user, b.rep_id);
     if (
       !Array.isArray(b.lead_ids) ||
       !b.lead_ids.length ||
@@ -147,11 +164,16 @@ export async function POST(req: NextRequest) {
       Array.isArray(b.area_filter)
     )
       throw new RequestError("Choose an area filter");
+    // Workflow markers are server-owned; ordinary drafts cannot opt into revisit rules.
+    const areaFilter = { ...b.area_filter };
+    delete areaFilter.kind;
+    delete areaFilter.rep_id;
+    if (rep) { areaFilter.kind = "assigned_revisit"; areaFilter.rep_id = rep; }
     const result = await prisma.$transaction(
       async (tx) => {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(928059)`;
         await assertScoped(tx, user, b.lead_ids);
-        const leads = await assertEligible(tx, b.lead_ids);
+        const leads = await assertEligible(tx, b.lead_ids, undefined, [], rep);
         if (leads.some((l) => !canPlotLead(l)))
           throw new RequestError("Resolve Mapping Issues first");
         const pool = leads.map((l) => ({ id: l.id, lat: l.lat!, lng: l.lng! }));
@@ -219,7 +241,7 @@ export async function POST(req: NextRequest) {
           const route = await tx.plannedRoute.create({
             data: {
               name: `${collectionName} ${i + 1}`,
-              area_filter: b.area_filter,
+              area_filter: areaFilter,
               target_count: b.leads_per_route,
               created_by: user.id,
               batch_id: batchId,

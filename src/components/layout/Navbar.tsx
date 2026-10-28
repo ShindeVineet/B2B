@@ -235,9 +235,9 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex min-h-16 flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2">
           {/* Top-Left Brand Logo & Name */}
-          <div className="flex items-center gap-4">
+          <div className="flex min-w-0 flex-[1_1_680px] items-center gap-4">
             <Link
               href="/"
               className="shrink-0 text-lg font-extrabold tracking-tight text-[#ff4500]"
@@ -246,7 +246,7 @@ export function Navbar() {
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center gap-1">
+            <nav aria-label="Workspace navigation" className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
               {primaryNav.map((item) => {
                 const Icon = item.icon;
                 const isActive =
@@ -276,7 +276,7 @@ export function Navbar() {
                   <summary className="cursor-pointer rounded-xl px-3 py-2 text-sm font-semibold text-slate-600">
                     More
                   </summary>
-                  <div className="absolute top-11 left-0 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+                  <div className="absolute top-11 right-0 z-[80] max-h-[70vh] w-56 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
                     {moreNav.map((item) => (
                       <Link
                         key={item.href}
@@ -303,31 +303,33 @@ export function Navbar() {
           </div>
 
           {/* Right Controls */}
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex flex-col items-end">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <div className="flex flex-col items-end">
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   disabled={refreshing || clearingCache}
                   onClick={() => void refreshAllData()}
                   className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  aria-label="Refresh all data"
                   title="Reload current workspace data"
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-                  {refreshing ? "Refreshing…" : "Refresh all data"}
+                  <span className="hidden sm:inline">{refreshing ? "Refreshing…" : "Refresh all data"}</span>
                 </button>
                 <button
                   type="button"
                   disabled={refreshing || clearingCache}
                   onClick={() => void clearCache()}
                   className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  aria-label="Clear cache"
                   title="Clear application caches and reload without signing out"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                  {clearingCache ? "Clearing…" : "Clear cache"}
+                  <span className="hidden sm:inline">{clearingCache ? "Clearing…" : "Clear cache"}</span>
                 </button>
               </div>
-              <span className="mt-0.5 text-[10px] text-slate-500">
+              <span className="mt-0.5 hidden text-[10px] text-slate-500 sm:block">
                 Last refreshed {lastRefreshed ? new Date(lastRefreshed).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" }) : "—"}
               </span>
             </div>
@@ -392,52 +394,6 @@ export function Navbar() {
                 <span className="sm:hidden">Account</span>
               </div>
             )}
-
-            <nav
-              className="lg:hidden relative"
-              aria-label="Workspace navigation"
-            >
-              <details>
-                <summary className="cursor-pointer p-2 text-xs">Menu</summary>
-                <div className="absolute right-0 top-10 z-[80] bg-white border rounded-xl shadow-lg p-2 w-56 max-h-[70vh] overflow-auto">
-                  <button
-                    type="button"
-                    disabled={refreshing || clearingCache}
-                    onClick={() => void refreshAllData()}
-                    className="mb-2 flex w-full items-center gap-2 rounded-lg border p-3 text-left text-sm font-semibold"
-                  >
-                    <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
-                    <span>{refreshing ? "Refreshing…" : "Refresh all data"}<small className="block font-normal text-slate-500">Last refreshed {lastRefreshed ? new Date(lastRefreshed).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" }) : "—"}</small></span>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={refreshing || clearingCache}
-                    onClick={() => void clearCache()}
-                    className="mb-2 flex w-full items-center gap-2 rounded-lg border p-3 text-left text-sm font-semibold"
-                  >
-                    <Trash2 size={16} />
-                    {clearingCache ? "Clearing cache…" : "Clear cache and reload"}
-                  </button>
-                  {filteredNav.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      prefetch={shouldPrefetch(item.href)}
-                      className={`flex items-center gap-2 rounded-lg p-3 text-sm ${pathname === item.href ? "bg-orange-50 text-orange-700 font-semibold" : "text-slate-700 hover:bg-slate-50"}`}
-                      onClick={(e) =>
-                        e.currentTarget
-                          .closest("details")
-                          ?.removeAttribute("open")
-                      }
-                    >
-                      <item.icon size={16} />
-                      {item.name}
-                      {counts[item.href] ? ` (${counts[item.href]})` : ""}
-                    </Link>
-                  ))}
-                </div>
-              </details>
-            </nav>
 
             {/* User Profile & Sign Out */}
             <div className="flex items-center gap-2 pl-2 border-l border-slate-200">

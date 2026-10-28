@@ -1,4 +1,5 @@
 "use client";
+import { revisitOwner, routeInWorkspace } from "@/lib/routes/workspace";
 import { RescheduleApprovals } from "./RescheduleApprovals";
 import styles from "./RouteBuilder.module.css";
 import { DAYS, todayIndia } from "@/lib/phase5/calendar";
@@ -27,6 +28,7 @@ type SavedRoute = {
   updated_at: string;
   batch_id: string;
   remainder_lead_ids: string[] | null;
+  area_filter?: unknown;
   total_distance_km: number;
   ground_rep_id: string | null;
   route_date: string | null;
@@ -65,13 +67,22 @@ async function api(url: string, body?: object, method = "POST") {
 }
 export function RouteBuilder() {
   const [routeTab, setRouteTab] = useState("planning");
+  const [person, setPerson] = useState("");
+  return <RouteWorkspace key={`${routeTab}:${person}`} routeTab={routeTab} setRouteTab={setRouteTab} person={person} setPerson={setPerson} />;
+}
+function RouteWorkspace({ routeTab, setRouteTab, person, setPerson }: {
+  routeTab: string; setRouteTab: (tab: string) => void; person: string; setPerson: (id: string) => void;
+}) {
+  const revisits = routeTab === "revisits";
+  const planning = routeTab === "planning" || revisits;
+  const poolEndpoint = revisits ? "/api/assigned-lead-routes" : "/api/route-plans";
   const [filterPairs, setFilterPairs] = useState<
     { pin_code: string | null; region: string | null; area: string }[]
   >([]);
   const [excluded, setExcluded] = useState<
     { id: string; company_name: string; reason: string }[]
   >([]);
-  const [poolGroup, setPoolGroup] = useState("available");
+  const [poolGroup, setPoolGroup] = useState(revisits ? "assigned" : "available");
   const [routes, setRoutes] = useState<SavedRoute[]>([]),
     [pool, setPool] = useState<Lead[]>([]),
     [stores, setStores] = useState<{ id: string; name: string }[]>([]),
@@ -94,7 +105,7 @@ export function RouteBuilder() {
   } | null>(null);
   const [areaMessage, setAreaMessage] = useState("");
   const [generationError, setGenerationError] = useState("");
-  const [showAssignedOnMap, setShowAssignedOnMap] = useState(false);
+  const [showAssignedOnMap, setShowAssignedOnMap] = useState(revisits);
   const [remainderLeads, setRemainderLeads] = useState<Lead[]>([]);
   const [selectedRouteIds, setSelectedRouteIds] = useState<Set<string>>(
     new Set(),
@@ -120,26 +131,31 @@ export function RouteBuilder() {
   } | null>(null);
   const visiblePool = pool.filter(
     (l) =>
-      Boolean(
+      revisits || Boolean(
         (l as Lead & { assigned_ground_rep_id?: string })
           .assigned_ground_rep_id,
       ) ===
       (poolGroup === "assigned"),
   );
   const mapPool = pool.filter(
-    (lead) => showAssignedOnMap || !lead.assigned_ground_rep_id,
+    (lead) => revisits || showAssignedOnMap || !lead.assigned_ground_rep_id,
   );
-  const current = routes.find((r) => r.id === active);
+  const workspaceRoutes = routes.filter(r => routeInWorkspace(r, routeTab, person));
+  const current = workspaceRoutes.find((r) => r.id === active);
+  const currentOwner = revisitOwner(current?.area_filter);
+  const assignmentRep = currentOwner || repId;
   async function refresh() {
     const d = await api("/api/route-plans");
     setRoutes(d.routes);
   }
   async function loadPool() {
+    const owner = currentOwner || (revisits ? person : undefined);
+    if (revisits && !owner) throw Error("Select a person first");
     setAreaMessage("");
-    setShowAssignedOnMap(false);
-    const params = new URLSearchParams({ pool: "true", store, region });
+    setShowAssignedOnMap(!!owner);
+    const params = new URLSearchParams({ pool: "true", store, region, ...(owner ? { rep_id: owner } : {}) });
     for (const pincode of pins) params.append("pincode", pincode);
-    const d = await api("/api/route-plans?" + params);
+    const d = await api((owner ? "/api/assigned-lead-routes" : "/api/route-plans") + "?" + params);
     setPool(d.leads);
     setExcluded(d.excluded_leads || []);
     setSelection(
@@ -147,7 +163,7 @@ export function RouteBuilder() {
         d.leads
           .filter(
             (l: Lead & { assigned_ground_rep_id?: string }) =>
-              !l.assigned_ground_rep_id,
+              !!owner || !l.assigned_ground_rep_id,
           )
           .map((l: Lead) => l.id),
       ),
@@ -158,15 +174,16 @@ export function RouteBuilder() {
       ? ` Calling Queue: ${calling.map((row) => `${row.pin_code || "no PIN"} has ${row.count}`).join(", ")}. These leads are not shown in Route Builder until their location is completed.`
       : "";
     setNotice(
-      `${d.total} leads match these filters: ${d.leads.filter((l: Lead & { assigned_ground_rep_id?: string }) => !l.assigned_ground_rep_id).length} available, ${d.leads.filter((l: Lead & { assigned_ground_rep_id?: string }) => l.assigned_ground_rep_id).length} assigned to a person but eligible for scheduling, ${d.excluded} unavailable.${callingText} Only selected eligible leads are used to build routes.`,
+      owner ? `${d.total} leads assigned to this person match these filters: ${d.leads.length} eligible, ${d.excluded} unavailable. Select leads to preview and save draft routes.` : `${d.total} leads match these filters: ${d.leads.filter((l: Lead & { assigned_ground_rep_id?: string }) => !l.assigned_ground_rep_id).length} available, ${d.leads.filter((l: Lead & { assigned_ground_rep_id?: string }) => l.assigned_ground_rep_id).length} assigned to a person but eligible for scheduling, ${d.excluded} unavailable.${callingText} Only selected eligible leads are used to build routes.`,
     );
   }
 
   async function searchAndAddLead() {
     const query = leadSearch.trim();
     if (!query) return;
-    const params = new URLSearchParams({ pool: "true", search: query });
-    const d = await api("/api/route-plans?" + params);
+    if (revisits && !person) throw Error("Select a person first");
+    const params = new URLSearchParams({ pool: "true", search: query, ...(revisits ? { rep_id: person } : {}) });
+    const d = await api(poolEndpoint + "?" + params);
     setSearchResults(d.leads || []);
     if (!(d.leads || []).length)
       setNotice(
@@ -180,21 +197,21 @@ export function RouteBuilder() {
       api("/api/route-plans"),
       api("/api/stores"),
       api("/api/users?assignable=true"),
-      api("/api/route-plans?filters=true"),
+      revisits && !person ? Promise.resolve({ pairs: [] }) : api(poolEndpoint + "?" + new URLSearchParams({ filters: "true", ...(revisits ? { rep_id: person } : {}) })),
     ])
       .then(([r, s, p, f]) => {
         setFilterPairs(f.pairs || []);
         setRoutes(r.routes);
         setActive(
           r.routes.find((r: SavedRoute) =>
-            ["draft", "ready"].includes(r.status),
+            routeInWorkspace(r, routeTab, person),
           )?.id || "",
         );
         setStores(s.stores || []);
         setReps(p.users || []);
       })
       .catch((e) => setError(String(e)));
-  }, []);
+  }, [routeTab, person, revisits, poolEndpoint]);
   async function run(fn: () => Promise<void>) {
     setBusy(true);
     setError("");
@@ -218,6 +235,7 @@ export function RouteBuilder() {
       "Selected area",
   };
   async function generate(save = false) {
+    if (revisits && !person) { setGenerationError("Select a person first"); return; }
     const collectionName = draftCollectionName.trim();
     if (save && !collectionName) {
       setGenerationError("Enter a draft collection name before saving.");
@@ -251,7 +269,8 @@ export function RouteBuilder() {
     }
     setGenerationError("");
     await run(async () => {
-      const d = await api("/api/route-plans", {
+      const d = await api(poolEndpoint, {
+        ...(revisits ? { rep_id: person } : {}),
         lead_ids: [...selection],
         leads_per_route: n,
         ...(k !== "" ? { route_count: Number(k) } : {}),
@@ -274,7 +293,7 @@ export function RouteBuilder() {
         setPreview(null);
         setDraftCollectionName("");
         setNotice(
-          "Route saved. Leads outside the saved route remain unassigned and available for another route.",
+          revisits ? "Draft route saved. Remaining leads stay with this person for later routes. Review the draft and assign a visit date when ready." : "Route saved. Leads outside the saved route remain unassigned and available for another route.",
         );
       }
     });
@@ -290,7 +309,7 @@ export function RouteBuilder() {
       if (["assign", "unassign", "completed"].includes(String(body.action)))
         setStatus("");
       if (body.action === "assign") setRouteTab("assigned");
-      if (body.action === "unassign") setRouteTab("planning");
+      if (body.action === "unassign") { const owner = revisitOwner(r.area_filter); if (owner) setPerson(owner); setRouteTab(owner ? "revisits" : "planning"); }
       if (body.action === "completed") setRouteTab("completed");
       await refresh();
       setNotice(
@@ -375,7 +394,7 @@ export function RouteBuilder() {
     setPreview({
       ...preview,
       routes: groups,
-      remainder: batch ? [...selection].filter((id) => !used.has(id)) : [],
+      remainder: [...selection].filter((id) => !used.has(id)),
       after: groups.reduce((sum, r) => sum + routeDistance(r), 0),
       improvement_percent: 0,
     });
@@ -390,11 +409,13 @@ export function RouteBuilder() {
       <nav aria-label="Route workspace" className="flex gap-2 border-b pb-3">
         {[
           ["planning", "Create & draft routes"],
+          ["revisits", "Assigned Leads Route"],
           ["assigned", "Assigned routes"],
           ["completed", "Completed routes"],
         ].map(([key, label]) => (
           <button
             key={key}
+            disabled={busy}
             aria-pressed={routeTab === key}
             onClick={() => {
               setRouteTab(key);
@@ -402,22 +423,18 @@ export function RouteBuilder() {
               setPreview(null);
               setActive(
                 routes.find((r) =>
-                  key === "planning"
-                    ? ["draft", "ready"].includes(r.status)
-                    : r.status === key,
+                  routeInWorkspace(r, key, person),
                 )?.id || "",
               );
             }}
           >
-            {label} (
+            {label}{key !== "revisits" && <> (
             {
               routes.filter((r) =>
-                key === "planning"
-                  ? ["draft", "ready"].includes(r.status)
-                  : r.status === key,
+                routeInWorkspace(r, key, person),
               ).length
             }
-            )
+            )</>}
           </button>
         ))}
       </nav>
@@ -425,7 +442,16 @@ export function RouteBuilder() {
         {error}
       </p>
       <p role="status">{notice}</p>
-      {routeTab === "planning" && (
+      {revisits && <section className="workspace-card space-y-3">
+        <label className="block font-semibold">Person
+          <select className="mt-1 w-full" value={person} disabled={busy} onChange={e => setPerson(e.target.value)}>
+            <option value="">Choose a person first</option>
+            {reps.map(rep => <option key={rep.id} value={rep.id}>{rep.name}</option>)}
+          </select>
+        </label>
+        <p className="text-sm text-slate-600">Create and save draft routes from this person’s assigned leads, then review and schedule them when ready.</p>
+      </section>}
+      {planning && (!revisits || person) && (
         <section className="workspace-card space-y-4">
           <h2 className="text-lg font-bold flex gap-2">
             <RouteIcon /> Create Route Map
@@ -641,7 +667,7 @@ export function RouteBuilder() {
                 <p className="text-sm font-semibold" role="status">
                   {selection.size} leads selected · {mapPool.length} eligible leads shown
                 </p>
-                <label className="flex items-center gap-2 text-sm font-semibold">
+                {!revisits && <label className="flex items-center gap-2 text-sm font-semibold">
                   <input
                     type="checkbox"
                     checked={showAssignedOnMap}
@@ -665,7 +691,7 @@ export function RouteBuilder() {
                     }}
                   />
                   Show assigned leads
-                </label>
+                </label>}
               </div>
               {areaMessage && (
                 <p
@@ -703,7 +729,7 @@ export function RouteBuilder() {
             <details>
               <summary>Select pool leads ({selection.size} selected)</summary>
               <div className="flex gap-2 py-3">
-                {["available", "assigned"].map((group) => (
+                {(revisits ? ["assigned"] : ["available", "assigned"]).map((group) => (
                   <button
                     key={group}
                     type="button"
@@ -809,7 +835,7 @@ export function RouteBuilder() {
               )}
               {!!preview.remainder.length && (
                 <label className="block text-sm font-semibold">
-                  Unassigned leads ({preview.remainder.length})
+                  {revisits ? "Remaining leads" : "Unassigned leads"} ({preview.remainder.length})
                   <textarea
                     className="mt-1 block h-20 w-full resize-y rounded-lg border bg-slate-50 p-2 text-xs font-normal"
                     readOnly
@@ -823,7 +849,7 @@ export function RouteBuilder() {
                       .join("\n")}
                   />
                   <span className="mt-1 block font-normal text-slate-500">
-                    These leads stay unassigned by default and remain available for future routes.
+                    {revisits ? "These leads stay assigned to this person and remain available for future routes." : "These leads stay unassigned by default and remain available for future routes."}
                   </span>
                 </label>
               )}
@@ -877,10 +903,10 @@ export function RouteBuilder() {
       {routeTab === "assigned" && (
         <RescheduleApprovals onSaved={() => void refresh()} />
       )}
-      <section className="workspace-card space-y-3">
+      {(!revisits || person) && <section className="workspace-card space-y-3">
         <div className="flex items-center gap-3 flex-wrap">
           <h2 className="text-lg font-bold">
-            {routeTab === "planning"
+            {planning
               ? "Draft routes"
               : routeTab === "assigned"
                 ? "Assigned routes"
@@ -888,14 +914,14 @@ export function RouteBuilder() {
           </h2>
           <select value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">All statuses</option>
-            {(routeTab === "planning" ? ["draft", "ready"] : [routeTab]).map(
+            {(planning ? ["draft", "ready"] : [routeTab]).map(
               (s) => (
                 <option key={s}>{s}</option>
               ),
             )}
           </select>
           <button onClick={() => void run(refresh)}>Refresh</button>
-          {routeTab === "planning" && selectedRouteIds.size > 0 && (
+          {planning && selectedRouteIds.size > 0 && (
             <button
               className="border-red-300 text-red-700"
               disabled={busy}
@@ -910,16 +936,11 @@ export function RouteBuilder() {
           straight-line estimates.
         </p>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 max-h-[440px] overflow-y-auto p-1">
-          {routes
-            .filter((r) =>
-              routeTab === "planning"
-                ? ["draft", "ready"].includes(r.status)
-                : r.status === routeTab,
-            )
+          {workspaceRoutes
             .filter((r) => !status || r.status === status)
             .map((r) => (
               <div className="space-y-2" key={r.id}>
-                {routeTab === "planning" && (
+                {planning && (
                   <label className="flex w-fit items-center gap-1 rounded-md border bg-white px-2 py-1 text-xs font-semibold shadow-sm">
                     <input
                       aria-label={`Select ${r.name} for deletion`}
@@ -963,13 +984,13 @@ export function RouteBuilder() {
               </div>
             ))}
         </div>
-        {!routes.some((r) => !status || r.status === status) && (
+        {!workspaceRoutes.some((r) => !status || r.status === status) && (
           <p className="rounded-xl bg-slate-50 p-5 text-sm text-slate-500">
             No saved routes{status ? ` with status ${status}` : " yet"}.
             Generate a preview above to get started.
           </p>
         )}
-      </section>
+      </section>}
       {(current || preview) && (
         <section
           id="route-map-review"
@@ -1166,10 +1187,10 @@ export function RouteBuilder() {
               {!!current.remainder_lead_ids?.length && (
                 <div className="p-4 rounded-xl border border-amber-400 bg-amber-50 space-y-3">
                   <h3 className="font-bold">
-                    {current.remainder_lead_ids.length} unassigned leads
+                    {current.remainder_lead_ids.length} {currentOwner ? "remaining leads" : "unassigned leads"}
                   </h3>
                   <textarea
-                    aria-label="Unassigned leads"
+                    aria-label={currentOwner ? "Remaining leads" : "Unassigned leads"}
                     className="block h-20 w-full resize-y rounded-lg border bg-white p-2 text-xs"
                     readOnly
                     value={current.remainder_lead_ids
@@ -1180,7 +1201,7 @@ export function RouteBuilder() {
                       .join("\n")}
                   />
                   <p className="text-sm text-slate-700">
-                    They will stay unassigned by default when this route is assigned.
+                    {currentOwner ? "These leads stay assigned to this person and can be included in another route later." : "They will stay unassigned by default when this route is assigned."}
                   </p>
                   <select
                     value={target}
@@ -1250,11 +1271,11 @@ export function RouteBuilder() {
                       request(
                         current,
                         { action: "remainder", choice: "defer" },
-                        "Leave these remainder leads unassigned and explicitly defer placement?",
+                        currentOwner ? "Keep these leads with this person and defer route placement?" : "Leave these remainder leads unassigned and explicitly defer placement?",
                       )
                     }
                   >
-                    Leave unassigned
+                    {currentOwner ? "Defer remaining leads" : "Leave unassigned"}
                   </button>
                 </div>
               )}
@@ -1306,7 +1327,8 @@ export function RouteBuilder() {
                       Team member
                       <select
                         className="w-full"
-                        value={repId}
+                        value={assignmentRep}
+                        disabled={!!currentOwner}
                         onChange={(e) => {
                           setRepId(e.target.value);
                         }}
@@ -1339,13 +1361,13 @@ export function RouteBuilder() {
                     can request another date for manager approval.
                   </p>
                   <button
-                    disabled={busy || !repId || !date}
+                    disabled={busy || !assignmentRep || !date}
                     onClick={() =>
                       request(
                         current,
                         {
                           action: "assign",
-                          rep_id: repId,
+                          rep_id: assignmentRep,
                           date,
                           working_days: [...DAYS],
                         },
