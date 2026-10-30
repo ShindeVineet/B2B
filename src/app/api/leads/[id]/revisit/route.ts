@@ -39,6 +39,10 @@ export async function POST(
       (!outcomes.includes(body.outcome) || target !== todayIndia())
     )
       throw new RequestError("Choose a valid outcome for today’s revisit");
+    if (body.interest_level != null &&
+      (!["High", "Medium", "Low"].includes(body.interest_level) ||
+        target !== todayIndia() || !body.outcome))
+      throw new RequestError("Choose a valid interest level for a completed revisit");
     if (
       body.notes != null &&
       (typeof body.notes !== "string" || body.notes.length > 2000)
@@ -90,7 +94,7 @@ export async function POST(
         if (target === todayIndia()) {
           await tx.consultation.update({ where: { id: previous.id }, data: appendRevisit(previous, {
             id: randomUUID(), visited_at: new Date().toISOString(), actor_id: user.id, staff_name: user.name,
-            trip_lead_id: null, channel: 'walk_in', outcome: body.outcome, notes: body.notes?.trim() || '', next_follow_up_date: followDate,
+            trip_lead_id: null, channel: 'walk_in', outcome: body.outcome, notes: body.notes?.trim() || '', next_follow_up_date: followDate, interest_level: body.interest_level ?? null,
           }) });
           if (!followDate && body.outcome !== "Couldn't meet") await completeDueFollowUp(tx, id);
         }
@@ -114,6 +118,7 @@ export async function POST(
               target > todayIndia() ? "REVISIT_SCHEDULED" : "REVISIT_LOGGED",
             new_value: JSON.stringify({
               consultation_id: previous.id,
+              interest_level: body.interest_level ?? null,
               next_follow_up_date: followDate,
               channel: "walk_in",
               date: target,
@@ -128,7 +133,7 @@ export async function POST(
         if (!body.outcome) return v;
         await tx.consultation.update({ where: { id: previous.id }, data: appendRevisit(previous, {
           id: randomUUID(), visited_at: new Date().toISOString(), actor_id: user.id, staff_name: user.name,
-          trip_lead_id: v.id, channel: 'ground', outcome: body.outcome, notes: body.notes?.trim() || '', next_follow_up_date: followDate,
+          trip_lead_id: v.id, channel: 'ground', outcome: body.outcome, notes: body.notes?.trim() || '', next_follow_up_date: followDate, interest_level: body.interest_level ?? null,
         }) });
         if (!followDate && body.outcome !== "Couldn't meet") await completeDueFollowUp(tx, id);
         await tx.tripLead.update({
@@ -157,6 +162,7 @@ export async function POST(
             old_value: v.id,
             new_value: JSON.stringify({
               consultation_id: previous.id,
+              interest_level: body.interest_level ?? null,
               outcome: body.outcome,
               notes: body.notes || null,
               next_follow_up_date: followDate,

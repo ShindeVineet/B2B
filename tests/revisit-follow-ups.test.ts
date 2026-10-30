@@ -32,3 +32,15 @@ test('successful contact completes only reminders due by the contact day, regard
  await completeDueFollowUp(tx,'lead','2026-10-22');
  assert.deepEqual(args,{where:{lead_id:'lead',active:true,due_date:{lte:new Date('2026-10-22')}},data:{active:false}});
 });
+
+test('revisit updates current interest while preserving the original rating and dated history',()=>{
+ const update=appendRevisit(original,{...revisit,interest_level:'High'});
+ assert.equal(update.interest_level,'High');
+ const responses=update.responses as Record<string,unknown>;
+ assert.equal((responses.original_consultation as Record<string,unknown>).interest_level,'Medium');
+ assert.equal((responses.revisits as RevisitEntry[])[0].interest_level,'High');
+ const later=appendRevisit({...original,...update} as Consultation,{...revisit,id:'later',interest_level:'Low'});
+ assert.equal(later.interest_level,'Low');
+ assert.equal(((later.responses as Record<string,unknown>).original_consultation as Record<string,unknown>).interest_level,'Medium');
+ assert.equal('interest_level' in appendRevisit(original,{...revisit,interest_level:null}),false);
+});

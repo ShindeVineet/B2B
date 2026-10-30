@@ -3,6 +3,7 @@ export type RevisitEntry = {
   id: string; visited_at: string; actor_id: string; staff_name: string;
   trip_lead_id: string | null; channel: string; outcome: string; notes: string;
   next_follow_up_date: string | null;
+  interest_level?: 'High' | 'Medium' | 'Low' | null;
 };
 export function appendRevisit(previous: Consultation, entry: RevisitEntry): Prisma.ConsultationUpdateInput {
   const responses = previous.responses && typeof previous.responses === 'object' && !Array.isArray(previous.responses) ? previous.responses : {};
@@ -10,6 +11,7 @@ export function appendRevisit(previous: Consultation, entry: RevisitEntry): Pris
   if (history.some(row => row && typeof row === 'object' && !Array.isArray(row) && row.id === entry.id)) return {};
   return {
     outcome: entry.outcome,
+    ...(entry.interest_level ? { interest_level: entry.interest_level } : {}),
     ...(entry.next_follow_up_date || entry.outcome !== "Couldn't meet" ? { next_follow_up_date: entry.next_follow_up_date ? new Date(entry.next_follow_up_date) : null } : {}),
     responses: {
       ...responses,

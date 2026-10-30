@@ -19,6 +19,7 @@ export function LogRevisit({
   const [future, setFuture] = useState(false),
     [date, setDate] = useState(addDays(todayIndia(), 1)),
     [outcome, setOutcome] = useState(""),
+    [interestLevel, setInterestLevel] = useState(""),
     [notes, setNotes] = useState(""),
     [followDate, setFollowDate] = useState("");
   return (
@@ -29,6 +30,7 @@ export function LogRevisit({
           setOpen(true);
           setError("");
           setOutcome("");
+          setInterestLevel("");
           setNotes("");
           setFollowDate("");
         }}
@@ -70,6 +72,7 @@ export function LogRevisit({
                       : {
                           date: todayIndia(),
                           outcome,
+                          interest_level: interestLevel || null,
                           notes,
                           next_follow_up_date: followDate || null,
                         },
@@ -148,6 +151,19 @@ export function LogRevisit({
                       "Couldn't meet",
                     ].map((o) => (
                       <option key={o}>{o}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  Level of interest
+                  <select
+                    className="block border rounded p-2 w-full"
+                    value={interestLevel}
+                    onChange={(e) => setInterestLevel(e.target.value)}
+                  >
+                    <option value="">Keep current level</option>
+                    {["High", "Medium", "Low"].map((level) => (
+                      <option key={level} value={level}>{level}</option>
                     ))}
                   </select>
                 </label>
