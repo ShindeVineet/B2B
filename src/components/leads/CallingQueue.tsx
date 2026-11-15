@@ -12,6 +12,8 @@ import { useAuth } from "@/context/AuthContext";
 import { fetchAllMapLeads } from "@/lib/map-leads";
 import { LeadCall } from "./LeadCall";
 import { PageHeader } from "@/components/workspace/PageHeader";
+import { QuickOnboard } from "./QuickOnboard";
+import { DialogOverlay } from "@/components/shared/DialogOverlay";
 
 type Lead = {
   id: string; lead_code: string; company_name: string; owner_name?: string | null;
@@ -26,6 +28,7 @@ type Lead = {
   linkedin_data?: Record<string, string> | null; linkedin_lead_id?: string | null;
   store_visits?: { scheduled_at: string; store: { name: string } }[];
   latest_interest_level: string | null;
+  consultations?: { id: string }[];
   calling_associate?: { id: string; name: string } | null;
   ground_rep?: { id: string; name: string } | null;
   store?: { id: string; name: string } | null;
@@ -91,14 +94,14 @@ export function CallingQueue() {
       {appliedSearch && <button type="button" onClick={() => { setAllSearch(""); setAppliedSearch(""); setPage(1); }}>Clear</button>}
     </form>}
     {error && <p role="alert" className="text-red-700">{error}</p>}
-    {edit && <form className="workspace-card space-y-3" onSubmit={async event => { event.preventDefault(); setBusy(true); setError(""); try { const response = await fetch(`/api/leads/${edit.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ company_name: edit.company_name, address: edit.address, pin_code: edit.pin_code, phone_no: edit.phone_no, google_map_link: edit.google_map_link }) }); const data = await response.json(); if (!response.ok) throw Error(data.error); setEdit(null); setRevision(value => value + 1); } catch (cause) { setError((cause as Error).message); } finally { setBusy(false); } }}>
-      <OriginalLead leadId={edit.id} /><h2>Complete alternate / verified details</h2>
+    {edit && <DialogOverlay aria-label="Complete lead details" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"><form className="w-full max-w-xl max-h-[90dvh] overflow-y-auto rounded-2xl bg-white p-5 shadow-xl space-y-3" onSubmit={async event => { event.preventDefault(); setBusy(true); setError(""); try { const response = await fetch(`/api/leads/${edit.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ company_name: edit.company_name, address: edit.address, pin_code: edit.pin_code, phone_no: edit.phone_no, google_map_link: edit.google_map_link }) }); const data = await response.json(); if (!response.ok) throw Error(data.error); setEdit(null); setRevision(value => value + 1); } catch (cause) { setError((cause as Error).message); } finally { setBusy(false); } }}>
+      <div className="flex items-center justify-between"><h2 className="text-lg font-bold">Complete details</h2><button type="button" onClick={() => setEdit(null)}>Close</button></div><OriginalLead leadId={edit.id} />
       {(["company_name", "phone_no", "address", "pin_code", "google_map_link"] as const).map(key => <label key={key} className="block">Alternate / verified {key.replaceAll("_", " ")}<input className="block w-full border p-2" value={edit[key] || ""} onChange={event => setEdit({ ...edit, [key]: event.target.value })} /></label>)}
       <button disabled={busy} className="bg-orange-600 p-2">Save details</button><button type="button" onClick={() => setEdit(null)}>Cancel</button>
-    </form>}
+    </form></DialogOverlay>}
     {tab === "Location" && <p className="rounded-xl bg-orange-50 p-3 text-sm">These locations were not found. Call to confirm the address or Google Maps link, then update the lead.</p>}
-    <div className="space-y-3">{displayedRows.map(lead => <article key={lead.id} className="workspace-card flex flex-wrap justify-between gap-3">
-      <div className="min-w-0 flex-1"><LastContact leadId={lead.id} value={lead.last_contact_at} />
+    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">{displayedRows.map(lead => <article key={lead.id} className="workspace-card !p-3 flex flex-col gap-2">
+      <div className="min-w-0"><LastContact leadId={lead.id} value={lead.last_contact_at} />
         {lead.next_follow_up_date && <p className="text-xs font-semibold text-orange-700">Follow-up: {lead.next_follow_up_date.slice(0, 10)}</p>}
         <Link className="font-semibold underline" href={`/leads/${lead.id}?context=calling`}>{lead.lead_code} {lead.company_name}</Link><p>{lead.phone_no || "Phone not provided"}</p><p className="text-xs text-slate-500">Source: {lead.lead_source || "Not recorded"}</p>
         {tab === "All Leads" && <><p className="mt-1 text-sm font-semibold text-orange-800">Funnel: {lead.funnel_status || lead.status || "New"}</p><p className="text-xs text-slate-600">Assigned to: {[lead.calling_associate?.name && `Caller: ${lead.calling_associate.name}`, lead.ground_rep?.name && `Ground: ${lead.ground_rep.name}`, lead.store?.name && `Store: ${lead.store.name}`].filter(Boolean).join(" · ") || "Unassigned"}</p>
@@ -106,9 +109,9 @@ export function CallingQueue() {
         {lead.store_visits?.[0] && <p className="mt-2 text-xs text-orange-800">Visit date: {new Date(lead.store_visits[0].scheduled_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST · {lead.store_visits[0].store.name}</p>}
         {tab !== "All Leads" && <p>{lead.address || "Location details pending"}</p>}{lead.linkedin_data && <p className="text-sm text-slate-600">{[lead.linkedin_data["Email address"], lead.linkedin_data.City, lead.linkedin_lead_id ? `LinkedIn ID: ${lead.linkedin_lead_id}` : ""].filter(Boolean).join(" · ")}</p>}
       </div>
-      <div className="flex flex-wrap gap-2"><GroupCreatedToggle leadId={lead.id} /><ScheduleVisitButton leadId={lead.id} />
-        {!isWonLead(lead) && !["Lost", "Converted"].includes(lead.funnel_status || "") ? <LeadCall showHistory className="bg-orange-600 px-4 py-2 text-white" leadId={lead.id} onSuccess={() => setRevision(value => value + 1)} /> : <span className="text-xs text-slate-500">Calling closed</span>}
-        <button onClick={() => setEdit(lead)}>Complete details</button><Link className="underline" href={`/partners?lead_id=${lead.id}`}>Onboard partner</Link>
+      <div className="flex flex-wrap gap-1.5 text-xs"><GroupCreatedToggle leadId={lead.id} /><ScheduleVisitButton leadId={lead.id} />
+        {!isWonLead(lead) && !["Lost", "Converted"].includes(lead.funnel_status || "") ? <LeadCall showHistory className="bg-orange-600 px-3 py-1.5 text-white" leadId={lead.id} onSuccess={() => setRevision(value => value + 1)} /> : <span className="text-xs text-slate-500">Calling closed</span>}
+        <button className="rounded border px-2 py-1" onClick={() => setEdit(lead)}>Complete details</button><QuickOnboard leadId={lead.id} status={lead.status} assigned={!!(lead.calling_associate_id || lead.ground_rep || lead.store)} hasConsultation={!!lead.consultations?.length} onSuccess={() => setRevision(value => value + 1)} /><Link className="rounded border px-2 py-1 underline" href={`/partners?lead_id=${lead.id}`}>Full onboarding</Link>
       </div>
     </article>)}</div>
     {!total && <p>No leads in this queue.</p>}

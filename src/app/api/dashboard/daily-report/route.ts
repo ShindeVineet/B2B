@@ -1,4 +1,4 @@
-import { dailyInbound, dailyReportRange } from "@/lib/dashboard/daily-inbound";
+import { callDirection, dailyInbound, dailyReportRange } from "@/lib/dashboard/daily-inbound";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
       prisma.lead.count({ where: { created_at: day } }),
       prisma.lead.groupBy({ by: ["lead_source"], where: { created_at: day }, _count: { _all: true }, orderBy: { _count: { lead_source: "desc" } } }),
       prisma.consultation.findMany({ where: { created_at: day }, select: { id: true, lead_id: true, created_at: true, interest_level: true, interaction_channel: true, direct_store_meeting: true, trip_lead_id: true, rep: { select: { id: true, name: true, role: true } }, lead: { select: { lead_source: true, intake_team: true } } } }),
-      prisma.callLog.findMany({ where: { created_at: day }, select: { id: true, lead_id: true, created_at: true, outcome: true, actor: { select: { id: true, name: true } } } }),
+      prisma.callLog.findMany({ where: { created_at: day }, select: { id: true, lead_id: true, created_at: true, outcome: true, actor: { select: { id: true, name: true } }, lead: { select: { lead_source: true } } } }),
       prisma.activityLog.findMany({ where: { created_at: day, action: { in: ["GROUP_CREATED_UPDATED", "CALLING_CONSULTATION_LOGGED", "OFFICE_CALL_LOGGED", "CALL_NOT_PICKED"] } }, select: { action: true, old_value: true, new_value: true } }),
       prisma.partner.count({ where: { partner_status: "active", OR: [{ created_at: day }, { reviewed_at: day }] } }),
     ]);
@@ -116,6 +116,8 @@ export async function GET(req: NextRequest) {
       const person = callStaff.get(call.actor.id) || { id: call.actor.id, name: call.actor.name, called: 0, picked: 0 };
       person.called++; if (call.outcome === "Call picked") person.picked++; callStaff.set(call.actor.id, person);
     }
+    const callDirections = { inbound: 0, outbound: 0 };
+    for (const call of calls) callDirections[callDirection(call.lead.lead_source)]++;
     // Call outcomes belong to the day of the call, even when the consultation is older.
     const callerInterest = { key: "caller", label: CHANNELS.caller, total: 0, hot: 0, warm: 0, cold: 0, unclassified: 0 };
     for (const event of groupEvents) {
@@ -125,6 +127,6 @@ export async function GET(req: NextRequest) {
         callerInterest.total++; callerInterest[level(value.interest_level)]++;
       } catch { /* Preserve malformed historical audit records without counting them. */ }
     }
-    return NextResponse.json({ date, totals: { leads: totalLeads, consultations: consultations.length, calls: calls.length, callsPicked: calls.filter(call => call.outcome === "Call picked").length, groups: groupEvents.filter(groupCreated).length, onboarded }, sources: sources.map(row => ({ source: row.lead_source || "Not recorded", count: row._count._all })), channels: channelRows.filter(row => ["ground", "store", "caller"].includes(row.key)), staff: [...staff.values()].sort((a, b) => b.total - a.total), callStaff: [...callStaff.values()].sort((a, b) => b.called - a.called), callerInterest, rates: { picked: calls.length ? Math.round(calls.filter(call => call.outcome === "Call picked").length / calls.length * 100) : 0, consultationToOnboarded: consultations.length ? Math.round(onboarded / consultations.length * 100) : 0 } });
+    return NextResponse.json({ date, totals: { leads: totalLeads, consultations: consultations.length, calls: calls.length, callsPicked: calls.filter(call => call.outcome === "Call picked").length, groups: groupEvents.filter(groupCreated).length, onboarded }, sources: sources.map(row => ({ source: row.lead_source || "Not recorded", count: row._count._all })), channels: channelRows.filter(row => ["ground", "store", "caller"].includes(row.key)), staff: [...staff.values()].sort((a, b) => b.total - a.total), callStaff: [...callStaff.values()].sort((a, b) => b.called - a.called), callDirections, callerInterest, rates: { picked: calls.length ? Math.round(calls.filter(call => call.outcome === "Call picked").length / calls.length * 100) : 0, consultationToOnboarded: consultations.length ? Math.round(onboarded / consultations.length * 100) : 0 } });
   } catch (error) { return failure(error); }
 }

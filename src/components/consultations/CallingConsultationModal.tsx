@@ -7,6 +7,7 @@ export function CallingConsultationModal({ leadId, onClose, onSuccess }: { leadI
   const [picked, setPicked] = useState<boolean | null>(null);
   const [interest, setInterest] = useState('');
   const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
   const [follow, setFollow] = useState(false);
   const [group, setGroup] = useState(false);
   const [notes, setNotes] = useState('');
@@ -27,7 +28,7 @@ export function CallingConsultationModal({ leadId, onClose, onSuccess }: { leadI
       e.preventDefault(); if (picked === null) return;
       setBusy(true); setError('');
       try {
-        const r = await fetch(`/api/leads/${leadId}/calling-consultation`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ call_picked: picked, ...(picked ? { notes, interest_level: interest, next_follow_up_date: follow ? date : null, whatsapp_group_created: group } : {}) }) });
+        const r = await fetch(`/api/leads/${leadId}/calling-consultation`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ call_picked: picked, ...(picked ? { notes, interest_level: interest, next_follow_up_date: follow ? date : null, next_follow_up_time: follow ? time || null : null, whatsapp_group_created: group } : {}) }) });
         const d = await r.json(); if (!r.ok) throw Error(d.error);
         window.dispatchEvent(new CustomEvent('lead-contact-updated', { detail: { leadId, date: d.call.created_at } }));
         window.dispatchEvent(new CustomEvent('lead-group-updated', { detail: { leadId } }));
@@ -42,7 +43,7 @@ export function CallingConsultationModal({ leadId, onClose, onSuccess }: { leadI
         {picked === true && <>
           <label className="block text-sm font-semibold">Level of interest<select required value={interest} onChange={e => setInterest(e.target.value)} className="block w-full border rounded-lg p-3 mt-1"><option value="">Select…</option>{['High', 'Medium', 'Low'].map(v => <option key={v}>{v}</option>)}</select></label>
           <label className="flex gap-2 items-center text-sm"><input type="checkbox" checked={follow} onChange={e => setFollow(e.target.checked)} />Follow-up required</label>
-          {follow && <label className="block text-sm font-semibold">Follow-up date<input required type="date" min={todayIndia()} value={date} onChange={e => setDate(e.target.value)} className="block w-full border rounded-lg p-3 mt-1" /></label>}
+          {follow && <div className="grid gap-3 sm:grid-cols-2"><label className="block text-sm font-semibold">Follow-up date<input required type="date" min={todayIndia()} value={date} onChange={e => setDate(e.target.value)} className="block w-full border rounded-lg p-3 mt-1" /></label><label className="block text-sm font-semibold">Preferred time <span className="font-normal">(optional)</span><input type="time" value={time} onChange={e => setTime(e.target.value)} className="block w-full border rounded-lg p-3 mt-1" /></label></div>}
           <label className="flex gap-2 items-center text-sm"><input type="checkbox" checked={group} onChange={e => setGroup(e.target.checked)} />Group Created</label>
           <label className="block text-sm font-semibold">Notes *<textarea required maxLength={10000} value={notes} onChange={e => setNotes(e.target.value)} className="block w-full border rounded-lg p-3 mt-1" rows={4} /></label>
         </>}

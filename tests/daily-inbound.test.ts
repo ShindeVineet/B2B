@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { dailyInbound, dailyReportRange } from "../src/lib/dashboard/daily-inbound";
+import { callDirection, dailyInbound, dailyReportRange } from "../src/lib/dashboard/daily-inbound";
+
+test("walk-in and CDT calls are inbound while other sources are outbound", () => {
+  assert.equal(callDirection("Walk-in"), "inbound");
+  assert.equal(callDirection("CDT"), "inbound");
+  assert.equal(callDirection("Phone"), "outbound");
+});
 const at = "2026-10-26T06:00:00Z";
 const call = (id: string) => ({ id, lead_id: "lead", created_at: at });
 const event = (call_id: string, consultation_id: string, interest_level = "High") => ({ action: "CALLING_CONSULTATION_LOGGED", new_value: JSON.stringify({ call_id, consultation_id, interest_level }) });

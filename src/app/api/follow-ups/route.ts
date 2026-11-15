@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const view = req.nextUrl.searchParams.get("view");
   if (view && !['pending', 'today', 'overdue', 'upcoming'].includes(view)) return NextResponse.json({ error: 'Invalid follow-up view' }, { status: 400 });
   const page = Math.max(1, Math.min(100000, Math.floor(Number(req.nextUrl.searchParams.get("page"))) || 1));
-  const pageSize = 30;
+  const pageSize = Math.max(1, Math.min(500, Math.floor(Number(req.nextUrl.searchParams.get("page_size"))) || 30));
   const where: Prisma.FollowUpWhereInput = {
         active: true,
         ...(view ? { due_date: followUpWindow(view) } : {}),
@@ -48,11 +48,11 @@ export async function GET(req: NextRequest) {
             calling_associate_id: true,
             intake_team: true,
             call_date: true,
-            consultations: { select: { id: true }, take: 1 },
+            consultations: { orderBy: [{ visit_date: "desc" }, { created_at: "desc" }], select: { id: true, interest_level: true }, take: 1 },
           },
         },
       },
-      orderBy: [{ due_date: "asc" }, { id: "asc" }],
+      orderBy: [{ due_date: "asc" }, { due_time: "asc" }, { id: "asc" }],
     }),
     prisma.followUp.count({ where }),
   ]);

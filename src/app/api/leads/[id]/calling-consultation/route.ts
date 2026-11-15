@@ -32,10 +32,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         responses: { kind: 'calling', call_picked: true, interest_level: input.interest, next_follow_up_date: input.followUp, whatsapp_group_created: input.group!, notes: input.notes },
       } }) : null);
       const updatedLead = await tx.lead.update({ where: { id }, data: { call_date: now, call_outcome: call.outcome, ...(input.picked ? { whatsapp_group_created: input.group, status: 'Active — Nurturing' } : {}) } });
-      if (date) await tx.followUp.upsert({ where: { lead_id: id }, create: { lead_id: id, rep_id: user.id, due_date: date }, update: { rep_id: user.id, due_date: date, active: true } });
+      if (date) await tx.followUp.upsert({ where: { lead_id: id }, create: { lead_id: id, rep_id: user.id, due_date: date, due_time: input.followUpTime }, update: { rep_id: user.id, due_date: date, due_time: input.followUpTime, active: true } });
       else await completeDueFollowUp(tx, id);
       if (consultation && input.picked) await evaluateCold(tx, updatedLead, consultation, Boolean(attached));
-      await tx.activityLog.create({ data: { lead_id: id, actor_id: user.id, action: input.picked ? 'CALLING_CONSULTATION_LOGGED' : 'CALL_NOT_PICKED', old_value: JSON.stringify({ whatsapp_group_created: lead.whatsapp_group_created }), new_value: JSON.stringify({ call_id: call.id, consultation_id: consultation?.id, next_follow_up_date: input.followUp, notes: input.notes, ...(input.picked ? { interest_level: input.interest, whatsapp_group_created: input.group } : {}) }) } });
+      await tx.activityLog.create({ data: { lead_id: id, actor_id: user.id, action: input.picked ? 'CALLING_CONSULTATION_LOGGED' : 'CALL_NOT_PICKED', old_value: JSON.stringify({ whatsapp_group_created: lead.whatsapp_group_created }), new_value: JSON.stringify({ call_id: call.id, consultation_id: consultation?.id, next_follow_up_date: input.followUp, next_follow_up_time: input.followUpTime, notes: input.notes, ...(input.picked ? { interest_level: input.interest, whatsapp_group_created: input.group } : {}) }) } });
       return { call, consultation, next_follow_up_date: input.followUp };
     });
     return NextResponse.json(result);

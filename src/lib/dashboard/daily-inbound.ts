@@ -11,6 +11,9 @@ export type DailyInteraction = {
   created_at: Date | string;
 };
 type CallAudit = { action: string; new_value: string | null };
+export function callDirection(leadSource?: string | null) {
+  return ["walk-in", "cdt"].includes((leadSource || "").trim().toLowerCase()) ? "inbound" : "outbound";
+}
 // A first call may create a consultation; subsequent calls reuse it. Count the
 // dated call once, while retaining standalone caller consultations in the report.
 export function dailyInbound<C extends DailyInteraction, L extends DailyInteraction>(consultations: C[], calls: L[], events: CallAudit[]) {

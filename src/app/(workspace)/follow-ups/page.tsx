@@ -7,7 +7,8 @@ import { LeadCall } from '@/components/leads/LeadCall';
 import { LeadHistory } from '@/components/leads/LeadHistory';
 import { LogRevisit } from '@/components/rep/LogRevisit';
 import { todayIndia } from '@/lib/phase5/calendar';
-type Row = { id: string; due_date: string; rep: { id: string; name: string }; lead: { id: string; lead_code: string; company_name: string; phone_no: string | null; call_date: string | null; assigned_ground_rep_id: string | null; calling_associate_id: string | null; intake_team: string; consultations: { id: string }[] } };
+import { followUpPriority } from '@/lib/last-contact';
+type Row = { id: string; due_date: string; due_time?: string | null; rep: { id: string; name: string }; lead: { id: string; lead_code: string; company_name: string; phone_no: string | null; call_date: string | null; assigned_ground_rep_id: string | null; calling_associate_id: string | null; intake_team: string; consultations: { id: string; interest_level?: string | null }[] } };
 const tabs = [['pending', 'Today & overdue'], ['today', 'Today'], ['overdue', 'Overdue'], ['upcoming', 'Upcoming']];
 export default function FollowUpsPage() {
   const { user } = useAuth();
@@ -39,8 +40,9 @@ export default function FollowUpsPage() {
       <div className="space-y-3">{rows.map(row => {
         const canRevisit = !!row.lead.consultations.length && (row.lead.assigned_ground_rep_id === user?.id || (['store','head','caller'].includes(row.lead.intake_team) && row.lead.calling_associate_id === user?.id));
         const overdue = row.due_date.slice(0,10) < todayIndia();
+        const priority = followUpPriority(row.lead.consultations[0]?.interest_level);
         return <article key={row.id} className="workspace-card flex flex-wrap items-start justify-between gap-4">
-          <div><Link className="font-semibold underline" href={`/leads/${row.lead.id}`}>{row.lead.lead_code} · {row.lead.company_name}</Link><p className="text-sm mt-1">{row.lead.phone_no || 'No phone number'}</p><p className="text-sm text-slate-600">Assigned to {row.rep.name}</p>{row.lead.call_date && <p className="text-xs text-slate-500">Last contact: {new Date(row.lead.call_date).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST</p>}<p className={`text-sm font-semibold mt-2 ${overdue ? 'text-red-700' : 'text-orange-700'}`}>{overdue ? 'Overdue' : 'Due'} · {row.due_date.slice(0,10)}</p></div>
+          <div><Link className="font-semibold underline" href={`/leads/${row.lead.id}`}>{row.lead.lead_code} · {row.lead.company_name}</Link><p className="text-sm mt-1">{row.lead.phone_no || 'No phone number'}</p><p className="text-sm text-slate-600">Assigned to {row.rep.name}</p>{row.lead.call_date && <p className="text-xs text-slate-500">Last contact: {new Date(row.lead.call_date).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST</p>}<div className="mt-2 flex flex-wrap gap-2"><p className={`text-sm font-semibold ${overdue ? 'text-red-700' : 'text-orange-700'}`}>{overdue ? 'Overdue' : 'Due'} · {row.due_date.slice(0,10)}{row.due_time ? ` at ${row.due_time}` : ''}</p>{user?.role !== 'ground_rep' && <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${priority === 'Hot' ? 'bg-red-100 text-red-800' : priority === 'Warm' ? 'bg-amber-100 text-amber-800' : priority === 'Cold' ? 'bg-sky-100 text-sky-800' : 'bg-slate-100 text-slate-700'}`}>{priority} priority</span>}</div></div>
           <div className="flex flex-wrap gap-2 items-start"><LeadHistory leadId={row.lead.id} />{user?.role !== 'analyst' && <LeadCall leadId={row.lead.id} className="border rounded-lg px-3 py-2 text-sm" />}{canRevisit && <LogRevisit leadId={row.lead.id} onSaved={() => {}} />}</div>
         </article>;
       })}</div>

@@ -74,6 +74,7 @@ export async function GET(req: NextRequest) {
             orderBy: [{ visit_date: "desc" }, { created_at: "desc" }, { id: "desc" }],
             take: 1,
             select: {
+              id: true,
               outcome: true,
               interest_level: true,
               visit_date: true,

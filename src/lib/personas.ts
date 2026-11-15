@@ -36,5 +36,11 @@ export const TEAM_PERSONAS = [
     role: "store_associate",
     label: "Store Associate",
   },
+  {
+    name: "Jogesh Gupta",
+    email: "jogesh.gupta@adorzy.com",
+    role: "store_associate",
+    label: "Caller",
+  },
 ] as const;
 export const PERSONA_STORE = "Florzy Experience Center";

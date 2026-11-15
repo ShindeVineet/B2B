@@ -16,6 +16,7 @@ import { LeadHistory } from "@/components/leads/LeadHistory";
 import { ScheduleVisitButton } from "@/components/leads/ScheduleVisitButton";
 import { canPlotLead } from "@/lib/mapping/visibility";
 import { LeadNavigate } from "@/components/leads/LeadNavigate";
+import { QuickOnboard } from "@/components/leads/QuickOnboard";
 import dynamic from "next/dynamic";
 const LocationThumbnail = dynamic(
   () => import("@/components/map/LocationThumbnail"),
@@ -145,6 +146,7 @@ export function ConsultationCard({
         </button>
         <ScheduleVisitButton leadId={row.lead.id} onSaved={onSaved} />
         {callAction && !isWonLead(row.lead) && <LeadCall leadId={row.lead.id} onSuccess={onSaved} />}
+        <QuickOnboard leadId={row.lead.id} status={row.lead.status} assigned={!!(row.lead.assigned_store_id || row.lead.assigned_ground_rep_id || row.lead.calling_associate_id)} hasConsultation onSuccess={onSaved} />
         {canRevisit && (
           <LogRevisit leadId={row.lead.id} onSaved={() => onSaved?.()} />
         )}

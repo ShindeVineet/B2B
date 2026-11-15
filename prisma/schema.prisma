@@ -117,6 +117,9 @@ model Lead {
   geocode_source    GeocodeSource?
   geocode_status    GeocodeStatus?
   status_entered_at DateTime?
+  // A short-form onboarding can be completed after a consultation without
+  // fabricating the full partner-profile fields.
+  onboarded_partner_code String? @unique
 
   id                     String    @id @default(cuid())
   scraped_date           DateTime?
@@ -534,6 +537,7 @@ model FollowUp {
   lead_id  String   @unique
   rep_id   String
   due_date DateTime @db.Date
+  due_time String?
   active   Boolean  @default(true)
   lead     Lead     @relation(fields: [lead_id], references: [id])
   rep      User     @relation(fields: [rep_id], references: [id])
