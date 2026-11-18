@@ -38,6 +38,8 @@ export async function GET(req: NextRequest) {
       const value = searchParams.get(param);
       if (value) clauses.push({ [field]: value });
     }
+    if (searchParams.get("exclude_onboarded") === "true")
+      clauses.push({ partners: { none: { partner_status: "active" } } });
     const q = searchParams.get("q")?.trim();
     if (q)
       where.OR = [
@@ -109,6 +111,8 @@ export async function GET(req: NextRequest) {
       orderBy:
         searchParams.get("sort") === "company"
           ? { lead: { company_name: "asc" } }
+          : searchParams.get("sort") === "pin_code"
+            ? { lead: { pin_code: "asc" } }
           : {
               visit_date:
                 searchParams.get("sort") === "oldest" ? "asc" : "desc",

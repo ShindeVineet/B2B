@@ -160,7 +160,6 @@ export default function Page() {
           ["to", "To date"],
           ["region", "Region"],
           ["outcome", "Outcome"],
-          ["interest_level", "Interest level"],
           ["lead_type", "Lead type"],
         ].map(([k, label]) => (
           <label key={k}>
@@ -173,6 +172,19 @@ export default function Page() {
             />
           </label>
         ))}
+        <label>
+          Interest level
+          <select
+            className="block border p-2 rounded"
+            value={filters.interest_level || ""}
+            onChange={(e) => change("interest_level", e.target.value)}
+          >
+            <option value="">All interest levels</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
+        </label>
         {[
           ["store", stores],
           ["rep_id", reps],
@@ -204,7 +216,16 @@ export default function Page() {
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
             <option value="company">Company A–Z</option>
+            <option value="pin_code">PIN code</option>
           </select>
+        </label>
+        <label className="flex items-center gap-2 self-end pb-2 text-sm font-medium">
+          <input
+            type="checkbox"
+            checked={filters.exclude_onboarded === "true"}
+            onChange={(e) => change("exclude_onboarded", e.target.checked ? "true" : "")}
+          />
+          Exclude onboarded
         </label>
       </div>
       <div className="flex flex-wrap items-center gap-3">
