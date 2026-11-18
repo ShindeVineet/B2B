@@ -115,8 +115,8 @@ export function ConsultationCard({
         {row.company_name || row.lead.company_name}
       </h2>
       <div className="flex flex-wrap gap-2 text-xs">
-        <span className="rounded-lg bg-orange-50 text-orange-800 px-2 py-1">
-          {row.outcome}
+        <span className={`rounded-lg px-2 py-1 ${isWonLead(row.lead) ? "bg-emerald-100 text-emerald-800" : "bg-orange-50 text-orange-800"}`}>
+          {isWonLead(row.lead) ? "Onboarded" : row.outcome}
         </span>
         {row.interest_level && (
           <span className="rounded-lg bg-slate-100 px-2 py-1">
