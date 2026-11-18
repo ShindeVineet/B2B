@@ -111,7 +111,7 @@ export function CallingQueue() {
       </div>
       <div className="flex flex-wrap gap-1.5 text-xs"><GroupCreatedToggle leadId={lead.id} /><ScheduleVisitButton leadId={lead.id} />
         {!isWonLead(lead) && !["Lost", "Converted"].includes(lead.funnel_status || "") ? <LeadCall showHistory className="bg-orange-600 px-3 py-1.5 text-white" leadId={lead.id} onSuccess={() => setRevision(value => value + 1)} /> : <span className="text-xs text-slate-500">Calling closed</span>}
-        <button className="rounded border px-2 py-1" onClick={() => setEdit(lead)}>Complete details</button><QuickOnboard leadId={lead.id} status={lead.status} assigned={!!(lead.calling_associate_id || lead.ground_rep || lead.store)} hasConsultation={!!lead.consultations?.length} onSuccess={() => setRevision(value => value + 1)} /><Link className="rounded border px-2 py-1 underline" href={`/partners?lead_id=${lead.id}`}>Full onboarding</Link>
+        <button className="rounded border px-2 py-1" onClick={() => setEdit(lead)}>Complete details</button><QuickOnboard leadId={lead.id} status={lead.status} assigned={!!(lead.calling_associate_id || lead.ground_rep || lead.store)} onboarded={isWonLead(lead)} hasConsultation={!!lead.consultations?.length} onSuccess={() => setRevision(value => value + 1)} /><Link className="rounded border px-2 py-1 underline" href={`/partners?lead_id=${lead.id}`}>Full onboarding</Link>
       </div>
     </article>)}</div>
     {!total && <p>No leads in this queue.</p>}

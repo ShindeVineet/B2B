@@ -81,7 +81,8 @@ export async function GET(req: NextRequest) {
         store_visit: { include: { store: { select: { name: true } } } },
         lead: {
           select: {
-            partners: { select: { partner_status: true } },
+            partners: { select: { partner_status: true, partner_code: true } },
+            onboarded_partner_code: true,
             id: true,
             lead_code: true,
             company_name: true,

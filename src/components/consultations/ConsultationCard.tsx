@@ -53,7 +53,8 @@ export type ConsultationRow = {
   ground_staff_name?: string | null;
   company_name?: string | null;
   lead: {
-    partners?: { partner_status: string }[];
+    partners?: { partner_status: string; partner_code?: string }[];
+    onboarded_partner_code?: string | null;
     id: string;
     lead_code?: string;
     company_name: string;
@@ -123,6 +124,7 @@ export function ConsultationCard({
             {row.interest_level} interest
           </span>
         )}
+        {(row.lead.onboarded_partner_code || row.lead.partners?.find(partner => partner.partner_status === "active")?.partner_code) && <span className="rounded-lg bg-emerald-50 px-2 py-1 font-semibold text-emerald-800">Partner Code · {row.lead.onboarded_partner_code || row.lead.partners?.find(partner => partner.partner_status === "active")?.partner_code}</span>}
       </div>
       <p className="text-xs text-slate-500">
         {new Date(row.visit_date).toLocaleDateString("en-IN", {
@@ -146,7 +148,7 @@ export function ConsultationCard({
         </button>
         <ScheduleVisitButton leadId={row.lead.id} onSaved={onSaved} />
         {callAction && !isWonLead(row.lead) && <LeadCall leadId={row.lead.id} onSuccess={onSaved} />}
-        <QuickOnboard leadId={row.lead.id} status={row.lead.status} assigned={!!(row.lead.assigned_store_id || row.lead.assigned_ground_rep_id || row.lead.calling_associate_id)} hasConsultation onSuccess={onSaved} />
+        <QuickOnboard leadId={row.lead.id} status={row.lead.status} assigned={!!(row.lead.assigned_store_id || row.lead.assigned_ground_rep_id || row.lead.calling_associate_id)} onboarded={isWonLead(row.lead)} hasConsultation onSuccess={onSaved} />
         {canRevisit && (
           <LogRevisit leadId={row.lead.id} onSaved={() => onSaved?.()} />
         )}

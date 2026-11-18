@@ -16,7 +16,7 @@ export default function Page() {
     [error, setError] = useState(""),
     [busy, setBusy] = useState(true),
     [expanded, setExpanded] = useState<string | null>(null),
-    [stores, setStores] = useState<{ id: string; name: string }[]>([]),
+    [stores, setStores] = useState<{ id: string; name: string; region?: string | null }[]>([]),
     [reps, setReps] = useState<{ id: string; name: string }[]>([]);
   useEffect(() => {
     Promise.all([
@@ -158,8 +158,6 @@ export default function Page() {
           ["q", "Company / mobile"],
           ["from", "From date"],
           ["to", "To date"],
-          ["region", "Region"],
-          ["outcome", "Outcome"],
           ["lead_type", "Lead type"],
         ].map(([k, label]) => (
           <label key={k}>
@@ -172,6 +170,16 @@ export default function Page() {
             />
           </label>
         ))}
+        <label>
+          Region
+          <input list="consultation-regions" className="block border p-2 rounded" value={filters.region || ""} onChange={(e) => change("region", e.target.value)} placeholder="Search region" />
+          <datalist id="consultation-regions">{[...new Set(stores.map(store => store.region).filter((region): region is string => !!region))].sort().map(region => <option key={region} value={region} />)}</datalist>
+        </label>
+        <label>
+          Outcome
+          <input list="consultation-outcomes" className="block border p-2 rounded" value={filters.outcome || ""} onChange={(e) => change("outcome", e.target.value)} placeholder="Search outcome" />
+          <datalist id="consultation-outcomes">{["Ready for onboarding", "Follow-up needed", "Not interested", "Couldn't meet", "Nurturing required", "On-boarding Done", "Visit scheduled", "Wrong location", "Office closed", "Dont want commission"].map(outcome => <option key={outcome} value={outcome} />)}</datalist>
+        </label>
         <label>
           Interest level
           <select
