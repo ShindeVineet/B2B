@@ -298,6 +298,8 @@ export default function Page() {
                   "Visit",
                   "Outcome",
                   "Interest",
+                  "Lead assigned to",
+                  "Latest follow-up by",
                   "Details",
                 ].map((h) => (
                   <th key={h}>{h}</th>
@@ -315,6 +317,8 @@ export default function Page() {
                   <td>{c.visit_date.slice(0, 10)}</td>
                   <td>{c.outcome}</td>
                   <td>{c.interest_level}</td>
+                  <td>{c.lead.assigned_to || "Unassigned"}</td>
+                  <td>{c.lead.latest_follow_up ? `${c.lead.latest_follow_up.name} · ${c.lead.latest_follow_up.kind} · ${new Date(c.lead.latest_follow_up.at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST` : "No follow-up recorded"}</td>
                   <td>
                     <button
                       onClick={() =>
@@ -323,6 +327,7 @@ export default function Page() {
                     >
                       View consultation
                     </button>
+                    <a className="ml-2 underline" href={`/leads/${c.lead.id}`}>All lead details</a>
                     {expanded === c.id && (
                       <ConsultationCard
                         row={c}

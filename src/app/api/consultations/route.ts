@@ -124,8 +124,21 @@ export async function GET(req: NextRequest) {
             assigned_store_id: true,
             assigned_ground_rep_id: true,
             calling_associate_id: true,
+            ground_rep: { select: { name: true } },
+            calling_associate: { select: { name: true } },
+            store: { select: { name: true } },
             lead_source: true,
             intake_team: true,
+            consultations: {
+              orderBy: [{ visit_date: "desc" }, { created_at: "desc" }, { id: "desc" }],
+              take: 1,
+              select: { created_at: true, visit_date: true, rep: { select: { name: true } } },
+            },
+            call_logs: {
+              orderBy: [{ created_at: "desc" }, { id: "desc" }],
+              take: 1,
+              select: { created_at: true, actor: { select: { name: true } } },
+            },
           },
         },
         rep: {
@@ -147,7 +160,21 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      consultations,
+      consultations: consultations.map(consultation => {
+        const latestConsultation = consultation.lead.consultations[0];
+        const latestCall = consultation.lead.call_logs[0];
+        const latest = latestCall && (!latestConsultation || latestCall.created_at > latestConsultation.created_at)
+          ? { name: latestCall.actor.name, at: latestCall.created_at, kind: "Call" }
+          : latestConsultation
+            ? { name: latestConsultation.rep.name, at: latestConsultation.created_at, kind: "Consultation" }
+            : null;
+        const assignedTo = [
+          consultation.lead.calling_associate?.name && `Caller: ${consultation.lead.calling_associate.name}`,
+          consultation.lead.ground_rep?.name && `Ground: ${consultation.lead.ground_rep.name}`,
+          consultation.lead.store?.name && `Store: ${consultation.lead.store.name}`,
+        ].filter(Boolean).join(" · ") || "Unassigned";
+        return { ...consultation, lead: { ...consultation.lead, assigned_to: assignedTo, latest_follow_up: latest } };
+      }),
       totalCount: paginated
         ? await prisma.consultation.count({ where })
         : consultations.length,

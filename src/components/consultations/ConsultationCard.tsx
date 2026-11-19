@@ -17,6 +17,7 @@ import { ScheduleVisitButton } from "@/components/leads/ScheduleVisitButton";
 import { canPlotLead } from "@/lib/mapping/visibility";
 import { LeadNavigate } from "@/components/leads/LeadNavigate";
 import { QuickOnboard } from "@/components/leads/QuickOnboard";
+import Link from "next/link";
 import dynamic from "next/dynamic";
 const LocationThumbnail = dynamic(
   () => import("@/components/map/LocationThumbnail"),
@@ -70,6 +71,8 @@ export type ConsultationRow = {
     calling_associate_id?: string | null;
     lead_source?: string | null;
     intake_team?: string;
+    assigned_to?: string;
+    latest_follow_up?: { name: string; at: string; kind: "Call" | "Consultation" } | null;
   };
   rep: { id: string; name: string };
 };
@@ -132,6 +135,7 @@ export function ConsultationCard({
         })}{" "}
         · {row.ground_staff_name || row.rep.name}
       </p>
+      <div className="rounded-lg bg-slate-50 p-2 text-xs text-slate-700 space-y-1"><p><strong>Lead assigned to:</strong> {row.lead.assigned_to || "Unassigned"}</p><p><strong>Latest follow-up by:</strong> {row.lead.latest_follow_up ? `${row.lead.latest_follow_up.name} · ${row.lead.latest_follow_up.kind} · ${new Date(row.lead.latest_follow_up.at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST` : "No follow-up recorded"}</p></div>
       {row.store_visit && <p className="rounded-lg border border-orange-200 bg-orange-50 p-2 text-xs text-orange-900">Store visit · {row.store_visit.store.name}<br />{new Date(row.store_visit.scheduled_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST · {row.store_visit.status}</p>}
       {row.next_follow_up_date && (
         <p className="text-xs font-medium text-orange-800">
@@ -146,6 +150,7 @@ export function ConsultationCard({
         >
           {expanded ? "Hide details" : "View details"}
         </button>
+        <Link className="rounded-lg border px-3 py-2" href={`/leads/${row.lead.id}`}>All lead details</Link>
         <ScheduleVisitButton leadId={row.lead.id} onSaved={onSaved} />
         {callAction && !isWonLead(row.lead) && <LeadCall leadId={row.lead.id} onSuccess={onSaved} />}
         <QuickOnboard leadId={row.lead.id} status={row.lead.status} assigned={!!(row.lead.assigned_store_id || row.lead.assigned_ground_rep_id || row.lead.calling_associate_id)} onboarded={isWonLead(row.lead)} hasConsultation onSuccess={onSaved} />
