@@ -17,15 +17,18 @@ export default function Page() {
     [busy, setBusy] = useState(true),
     [expanded, setExpanded] = useState<string | null>(null),
     [stores, setStores] = useState<{ id: string; name: string; region?: string | null }[]>([]),
-    [reps, setReps] = useState<{ id: string; name: string }[]>([]);
+    [reps, setReps] = useState<{ id: string; name: string }[]>([]),
+    [facets, setFacets] = useState<{ pin_codes: string[]; regions: string[]; lead_types: string[] }>({ pin_codes: [], regions: [], lead_types: [] });
   useEffect(() => {
     Promise.all([
       fetch("/api/stores").then((r) => r.json()),
       fetch("/api/users?assignable=true").then((r) => r.json()),
+      fetch("/api/consultations?facets=true").then((r) => r.json()),
     ])
-      .then(([s, r]) => {
+      .then(([s, r, f]) => {
         setStores(s.stores || []);
         setReps(r.users || []);
+        setFacets(f);
       })
       .catch(() => {});
   }, []);
@@ -158,7 +161,6 @@ export default function Page() {
           ["q", "Company / mobile"],
           ["from", "From date"],
           ["to", "To date"],
-          ["lead_type", "Lead type"],
         ].map(([k, label]) => (
           <label key={k}>
             {label}
@@ -173,12 +175,22 @@ export default function Page() {
         <label>
           Region
           <input list="consultation-regions" className="block border p-2 rounded" value={filters.region || ""} onChange={(e) => change("region", e.target.value)} placeholder="Search region" />
-          <datalist id="consultation-regions">{[...new Set(stores.map(store => store.region).filter((region): region is string => !!region))].sort().map(region => <option key={region} value={region} />)}</datalist>
+          <datalist id="consultation-regions">{[...new Set([...stores.map(store => store.region).filter((region): region is string => !!region), ...facets.regions])].sort().map(region => <option key={region} value={region} />)}</datalist>
+        </label>
+        <label>
+          PIN code
+          <input list="consultation-pin-codes" className="block border p-2 rounded" value={filters.pin_code || ""} onChange={(e) => change("pin_code", e.target.value)} placeholder="Search PIN code" />
+          <datalist id="consultation-pin-codes">{[...new Set(facets.pin_codes)].map(pinCode => <option key={pinCode} value={pinCode} />)}</datalist>
         </label>
         <label>
           Outcome
           <input list="consultation-outcomes" className="block border p-2 rounded" value={filters.outcome || ""} onChange={(e) => change("outcome", e.target.value)} placeholder="Search outcome" />
           <datalist id="consultation-outcomes">{["Ready for onboarding", "Follow-up needed", "Not interested", "Couldn't meet", "Nurturing required", "On-boarding Done", "Visit scheduled", "Wrong location", "Office closed", "Dont want commission"].map(outcome => <option key={outcome} value={outcome} />)}</datalist>
+        </label>
+        <label>
+          Lead type
+          <input list="consultation-lead-types" className="block border p-2 rounded" value={filters.lead_type || ""} onChange={(e) => change("lead_type", e.target.value)} placeholder="Search lead type" />
+          <datalist id="consultation-lead-types">{[...new Set(facets.lead_types)].map(leadType => <option key={leadType} value={leadType} />)}</datalist>
         </label>
         <label>
           Interest level
@@ -224,7 +236,6 @@ export default function Page() {
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
             <option value="company">Company A–Z</option>
-            <option value="pin_code">PIN code</option>
           </select>
         </label>
         <label className="flex items-center gap-2 self-end pb-2 text-sm font-medium">

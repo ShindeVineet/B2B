@@ -19,6 +19,31 @@ export async function GET(req: NextRequest) {
     const leadId = searchParams.get("lead_id");
     const repId = searchParams.get("rep_id");
 
+    if (searchParams.get("facets") === "true") {
+      const scope = getLeadFilterForUser(user);
+      const [leads, types] = await Promise.all([
+        prisma.lead.findMany({
+          where: scope,
+          distinct: ["pin_code", "region"],
+          select: { pin_code: true, region: true },
+          orderBy: { pin_code: "asc" },
+          take: 1000,
+        }),
+        prisma.consultation.findMany({
+          where: { lead: scope, lead_type: { not: null } },
+          distinct: ["lead_type"],
+          select: { lead_type: true },
+          orderBy: { lead_type: "asc" },
+          take: 1000,
+        }),
+      ]);
+      return NextResponse.json({
+        pin_codes: leads.flatMap(lead => lead.pin_code ? [lead.pin_code] : []),
+        regions: leads.flatMap(lead => lead.region ? [lead.region] : []),
+        lead_types: types.flatMap(row => row.lead_type ? [row.lead_type] : []),
+      });
+    }
+
     const where: Prisma.ConsultationWhereInput = {
       lead: getLeadFilterForUser(user),
     };
@@ -38,6 +63,8 @@ export async function GET(req: NextRequest) {
       const value = searchParams.get(param);
       if (value) clauses.push({ [field]: value });
     }
+    const pinCode = searchParams.get("pin_code")?.trim();
+    if (pinCode) clauses.push({ pin_code: pinCode });
     if (searchParams.get("exclude_onboarded") === "true")
       clauses.push({ partners: { none: { partner_status: "active" } } });
     const q = searchParams.get("q")?.trim();
@@ -112,8 +139,6 @@ export async function GET(req: NextRequest) {
       orderBy:
         searchParams.get("sort") === "company"
           ? { lead: { company_name: "asc" } }
-          : searchParams.get("sort") === "pin_code"
-            ? { lead: { pin_code: "asc" } }
           : {
               visit_date:
                 searchParams.get("sort") === "oldest" ? "asc" : "desc",
